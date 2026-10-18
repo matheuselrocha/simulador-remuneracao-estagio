@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage/
+playwright-report/
+test-results/
+supabase/.temp/
+supabase/.branches/
+
+# Fontes comerciais: não versionar até confirmar a licença web do Senado (ver README)
+referencias/fontes/
