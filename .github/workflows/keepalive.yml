@@ -1,0 +1,31 @@
+# O plano gratuito do Supabase pausa o projeto após ~7 dias sem atividade.
+# Esta leitura simples (GET, anon key) a cada 3 dias mantém o projeto ativo.
+# Requer os secrets SUPABASE_URL e SUPABASE_ANON_KEY no repositório (ver README).
+name: Manter Supabase ativo
+
+on:
+  schedule:
+    - cron: "17 11 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Leitura simples na API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Configure os secrets SUPABASE_URL e SUPABASE_ANON_KEY."
+            exit 1
+          fi
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/anos_calendario?select=ano&limit=1")
+          echo "HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Supabase respondeu $status. Se o projeto estiver pausado, reative-o no dashboard."
+            exit 1
+          fi

@@ -118,8 +118,8 @@ img {
   display: inline-block;
   font-family: var(--sf-fonte-titulo);
   font-weight: 700;
-  font-size: 0.95rem;
-  padding: 4px 14px;
+  font-size: 1.2rem;
+  padding: 2px 14px;
   border: 1px solid rgb(255 255 255 / 0.55);
   border-radius: 999px;
   margin-bottom: 12px;
@@ -131,14 +131,18 @@ img {
 }
 .faixa__texto {
   margin-top: 10px;
-  max-width: 60ch;
-  font-size: 1rem;
+  max-width: 52ch;
+  font-family: var(--sf-fonte-titulo);
+  font-weight: 700;
+  font-size: 1.2rem;
 }
 
 /* ───── Rodapé ───── */
 .rodape {
   margin-top: 48px;
-  background: var(--sf-gradiente);
+  /* sólido (Reflex Blue): o texto pequeno do rodapé não passaria AA sobre a parte clara do gradiente */
+  background: var(--sf-grad-inicio);
+  border-top: 4px solid var(--sf-verde);
   color: #fff;
 }
 .rodape__conteudo {
@@ -190,8 +194,8 @@ img {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgb(255 255 255 / 0.18);
-  border: 1px solid rgb(255 255 255 / 0.6);
+  background: #fff;
+  color: var(--sf-grad-inicio);
   font-size: 1rem;
   flex: none;
 }
@@ -322,7 +326,7 @@ select[aria-invalid="true"] {
   border-left: 1px solid var(--sf-azul-ceu);
 }
 .alternancia__opcoes input:checked + label {
-  background: var(--sf-azul-ceu);
+  background: var(--sf-azul-ceu-escuro);
   color: #fff;
 }
 .alternancia__opcoes input:focus-visible + label {
@@ -358,11 +362,12 @@ select[aria-invalid="true"] {
   border: 1px solid var(--sf-azul-ceu);
 }
 .botao--primario {
-  background: var(--sf-azul-ceu);
+  background: var(--sf-azul-ceu-escuro);
+  border-color: var(--sf-azul-ceu-escuro);
   color: #fff;
 }
 .botao--primario:hover {
-  background: #006aa6;
+  background: var(--cor-link);
 }
 .botao--secundario {
   background: var(--cor-superficie);

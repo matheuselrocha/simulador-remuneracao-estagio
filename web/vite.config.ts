@@ -14,6 +14,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         simulador: resolve(raiz, "index.html"),
+        admin: resolve(raiz, "admin/index.html"),
       },
     },
   },

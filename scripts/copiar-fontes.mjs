@@ -1,6 +1,6 @@
-// Copia só os woff2 usados de referencias/fontes/ para web/public/fontes/.
-// As fontes são comerciais e não são versionadas (ver README, "Fontes").
-// Sem elas, o site usa as fontes de fallback do sistema.
+// Atualiza os woff2 usados em web/public/fontes/ a partir de referencias/fontes/
+// (quando a pasta de referência existe). Os 4 arquivos de web/public/fontes/ são
+// versionados; referencias/fontes/ (originais, 50 MB) não é.
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,4 +20,6 @@ for (const [nome, origem] of Object.entries(arquivos)) {
   if (existsSync(caminho)) copyFileSync(caminho, join(destino, nome));
   else faltando++;
 }
-if (faltando) console.warn(`[fontes] ${faltando} arquivo(s) não encontrado(s) em referencias/fontes; usando fontes de fallback.`);
+if (faltando && !Object.keys(arquivos).every((n) => existsSync(join(destino, n)))) {
+  console.warn(`[fontes] ${faltando} arquivo(s) não encontrado(s); o site usará as fontes de fallback.`);
+}

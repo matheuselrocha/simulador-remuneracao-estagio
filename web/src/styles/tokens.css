@@ -10,6 +10,13 @@
   --sf-grad-fim: #0093dd; /* Pantone Process Cyan */
   /* "-99° 27%" do manual: escuro em cima, claro embaixo */
   --sf-gradiente: linear-gradient(189deg, var(--sf-grad-inicio), 27%, var(--sf-grad-fim));
+  /* Conferido contra o degradê do logo (amostragem de pixels): a dica de 27%
+     reproduz a rampa do ícone. */
+
+  /* Contraste do texto branco (WCAG AA):
+     azul céu 4,5:1 e fim do gradiente 3,4:1 → só texto grande/negrito ≥ 18,7px.
+     Para texto branco pequeno (botões, dias da grade) usar a variante escura. */
+  --sf-azul-ceu-escuro: #006aa6; /* 5,8:1 com branco; derivado do azul céu */
 
   /* Neutros (não definidos no manual): paleta sóbria */
   --cor-fundo: #f3f5f8;

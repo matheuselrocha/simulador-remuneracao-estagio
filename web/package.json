@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sgest/calc": "*"
+    "@sgest/calc": "*",
+    "@supabase/supabase-js": "^2.118.0"
   }
 }
