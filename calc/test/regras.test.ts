@@ -53,6 +53,10 @@ describe("datas", () => {
 });
 
 describe("validações", () => {
+  it("trata ano parcial da digitação (0002-11-25) como data inválida", () => {
+    const r = simularFolha(comum("0002-11-25", 2026, 9), parametros2026());
+    expect(!r.ok && r.erros[0]!.codigo).toBe("data-invalida");
+  });
   it("rejeita entrada posterior ao mês da folha (bug 4 da planilha)", () => {
     const r = simularFolha(comum("2026-10-05", 2026, 9), parametros2026());
     expect(!r.ok && r.erros[0]!.codigo).toBe("entrada-posterior-a-folha");
