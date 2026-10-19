@@ -87,6 +87,19 @@ Sem `web/.env.local`, o simulador funciona com o snapshot e mostra o aviso "valo
 | `npm run build` | gera `dist/` |
 | `npm run verificar:producao` | sem gravar nada, confere no projeto real: cadastro desativado, anon lê valores, anon não lê auditoria |
 
+### Testes de banco sem Docker (projeto remoto)
+
+`npm run test:db` também roda contra um projeto Supabase remoto quando existe `supabase/.env.test` (fora do git):
+
+```
+SUPABASE_URL=https://SEU_REF.supabase.co
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...   # só neste arquivo local; nunca no front ou no git
+SUPABASE_PROJECT_REF=SEU_REF
+```
+
+e com `SUPABASE_ACCESS_TOKEN` (token da conta) no ambiente, para o SQL direto. **Atenção:** os testes gravam dados e a auditoria é imutável. Rode só num projeto sem uso real (ou antes de publicar) e depois zere o banco: apague as tabelas/tipos/funções do app e as linhas `20261018%` de `supabase_migrations.schema_migrations` e de `seed_files`, e rode `supabase db push --include-seed`. Em 19/10/2026 a bateria completa (27 testes) passou no projeto de produção antes da publicação, que em seguida foi zerado.
+
 ## Publicar o site
 
 ```bash

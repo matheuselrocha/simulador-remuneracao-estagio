@@ -3,7 +3,6 @@
  *   supabase start && supabase db reset && npm run test:db
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type pg from "pg";
 import {
   ANON_KEY,
   API_URL,
@@ -12,6 +11,7 @@ import {
   criarUsuario,
   removerUsuario,
   vigenciaFuturaUnica,
+  type ConexaoSql,
   type UsuarioTeste,
 } from "./ambiente.ts";
 
@@ -19,7 +19,7 @@ const TABELAS = ["valores", "anos_calendario", "datas_nao_uteis", "auditoria", "
 const ANO_RASCUNHO = 2099;
 const RESP = "Teste automatizado";
 
-let db: pg.Client;
+let db: ConexaoSql;
 let admin: UsuarioTeste;
 let comum: UsuarioTeste;
 
@@ -131,7 +131,7 @@ describe("usuário autenticado que NÃO é o do SGEST", () => {
     const del = await comum.cliente.rpc("excluir_registro", { p_tabela: "datas_nao_uteis", p_id: "1", p_responsavel: "Intruso" });
     expect(del.error).not.toBeNull();
     const conferencia = await db.query("select descricao from public.datas_nao_uteis where data = '2026-09-07'");
-    expect(conferencia.rows[0].descricao).toBe("Independência do Brasil");
+    expect(conferencia.rows[0]!.descricao).toBe("Independência do Brasil");
   });
 
   it("não lê a auditoria nem anos em rascunho", async () => {
@@ -171,7 +171,7 @@ describe("admin do SGEST: constraints e regras", () => {
       .eq("tipo", "bolsa")
       .eq("vigencia_inicio", "2026-01-01");
     expect(editar.error?.message).toMatch(/já vigente/);
-    const id = (await db.query("select id from public.valores where tipo='bolsa' and vigencia_inicio='2026-01-01'")).rows[0].id;
+    const id = (await db.query("select id from public.valores where tipo='bolsa' and vigencia_inicio='2026-01-01'")).rows[0]!.id;
     const excluir = await admin.cliente.rpc("excluir_registro", { p_tabela: "valores", p_id: String(id), p_responsavel: RESP });
     expect(excluir.error?.message).toMatch(/já vigente/);
   });
@@ -196,21 +196,26 @@ describe("admin do SGEST: constraints e regras", () => {
     expect(r.error).toBeNull();
   });
 
-  it("ano nasce rascunho; publicado não volta a rascunho nem é excluído", async () => {
-    await db.query("begin");
-    try {
-      await db.query("insert into public.anos_calendario (ano, status, responsavel) values (2098, 'publicado', $1)", [RESP]);
-      const criado = await db.query("select status from public.anos_calendario where ano = 2098");
-      expect(criado.rows[0].status).toBe("rascunho");
-      await db.query("update public.anos_calendario set status = 'publicado', responsavel = $1 where ano = 2098", [RESP]);
-      const pub = await db.query("select publicado_em from public.anos_calendario where ano = 2098");
-      expect(pub.rows[0].publicado_em).not.toBeNull();
-      await expect(db.query("update public.anos_calendario set status = 'rascunho', responsavel = $1 where ano = 2098", [RESP])).rejects.toThrow(
-        /não pode voltar a rascunho/,
-      );
-    } finally {
-      await db.query("rollback");
-    }
+  it("ano nasce rascunho; publicado não volta a rascunho", async () => {
+    // Um bloco só, desfeito no fim pelo RAISE final (nada fica gravado, nem na auditoria).
+    await expect(
+      db.query(`do $$
+        declare s text;
+        begin
+          insert into public.anos_calendario (ano, status, responsavel) values (2098, 'publicado', 'Teste automatizado');
+          select status into s from public.anos_calendario where ano = 2098;
+          if s <> 'rascunho' then raise exception 'FALHOU: nasceu %', s; end if;
+          update public.anos_calendario set status = 'publicado', responsavel = 'Teste automatizado' where ano = 2098;
+          if (select publicado_em from public.anos_calendario where ano = 2098) is null then raise exception 'FALHOU: sem publicado_em'; end if;
+          begin
+            update public.anos_calendario set status = 'rascunho', responsavel = 'Teste automatizado' where ano = 2098;
+            raise exception 'FALHOU: voltou a rascunho';
+          exception when sqlstate 'P0001' then
+            if sqlerrm like 'FALHOU%' then raise; end if;
+          end;
+          raise exception 'TUDO-CERTO';
+        end $$`),
+    ).rejects.toThrow(/TUDO-CERTO/);
   });
 });
 
