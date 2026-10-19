@@ -96,6 +96,27 @@ img {
   width: auto;
   display: block;
 }
+.topo__direita {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+/* Acesso discreto ao painel: só ícone (rótulo para leitor de tela e dica ao passar o mouse) */
+.topo__admin {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 1px solid var(--cor-borda);
+  border-radius: 50%;
+  color: var(--cor-link);
+  background: var(--cor-superficie);
+}
+.topo__admin:hover {
+  border-color: var(--sf-azul-ceu);
+  background: var(--cor-superficie-suave);
+}
 .topo__orgao {
   font-family: var(--sf-fonte-titulo);
   font-weight: 700;
