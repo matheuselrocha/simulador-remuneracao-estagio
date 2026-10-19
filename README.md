@@ -29,7 +29,7 @@ Substitui a planilha *Calculadora Financeira – Estagiários* (em `referencias/
 
 ```
 calc/                    motor de cálculo puro (TypeScript, sem DOM/IO) + testes Vitest
-web/                     front (Vite + TypeScript, sem framework)
+web/                     front (Vite + TypeScript, sem framework); public/fontes = 4 woff2 usados
   index.html             simulador público
   admin/index.html       painel (rotas por hash: #/valores, #/calendario…)
   src/parametros.snapshot.json   cópia dos parâmetros usada se o Supabase falhar
@@ -39,7 +39,7 @@ supabase/
   tests/                 testes de banco e segurança (Supabase local)
   config.toml            cadastro público desligado, senha mínima de 12
 scripts/                 snapshot, cópia das fontes, verificação de produção
-.github/workflows/       CI e "manter Supabase ativo"
+.github/workflows/       CI, deploy no GitHub Pages e "manter Supabase ativo"
 referencias/             planilha original, marca, padrão cromático (fontes fora do git)
 ```
 
@@ -104,8 +104,14 @@ Variáveis de ambiente do build (**só estas duas**):
 
 > **Nunca** use a `service_role key` no front, em variáveis de build ou no repositório.
 
-- **Vercel / Netlify**: build command `npm run build`, output `dist`, defina as duas variáveis.
-- **GitHub Pages**: rode o build num workflow com as variáveis como secrets e publique `dist/` (o repositório precisa ser público no plano gratuito do GitHub).
+### GitHub Pages (hospedagem atual)
+
+- Endereço: **https://matheuselrocha.github.io/simulador-remuneracao-estagio/** (painel em `.../admin/`).
+- Cada push na `main` dispara o workflow *Publicar no GitHub Pages* (`.github/workflows/pages.yml`): testes → build → deploy.
+- As duas variáveis vêm dos secrets do repositório `SUPABASE_URL` e `SUPABASE_ANON_KEY` (Settings → Secrets and variables → Actions). Os mesmos secrets alimentam o keepalive. Sem eles o site sai com o snapshot.
+- Republicar sem mudar código: Actions → *Publicar no GitHub Pages* → *Run workflow*.
+
+Outras opções (Vercel / Netlify): build command `npm run build`, output `dist`, as duas variáveis acima.
 
 Antes de publicar, atualize o fallback e faça commit dele:
 
@@ -137,10 +143,10 @@ npm run snapshot
    select id from auth.users where email = 'GMAIL_DO_SGEST@gmail.com';
    ```
 7. **URLs do "esqueci a senha".** Authentication → URL Configuration:
-   - *Site URL*: `https://SEU-DOMINIO/`
-   - *Redirect URLs*: `https://SEU-DOMINIO/admin/` (e `http://localhost:5173/admin/` se for testar localmente)
-8. **Copiar URL e anon key.** Project Settings → API → *Project URL* e *anon public* → variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` da hospedagem.
-9. **Manter o projeto ativo.** No GitHub: Settings → Secrets and variables → Actions → crie `SUPABASE_URL` e `SUPABASE_ANON_KEY`. O workflow *Manter Supabase ativo* faz uma leitura a cada 3 dias (o plano gratuito pausa após ~7 dias sem atividade). **Se o projeto pausar mesmo assim**, basta entrar no dashboard e clicar em *Restore/Resume project*; enquanto isso o simulador usa o snapshot e avisa.
+   - *Site URL*: `https://matheuselrocha.github.io/simulador-remuneracao-estagio/`
+   - *Redirect URLs*: `https://matheuselrocha.github.io/simulador-remuneracao-estagio/admin/` (e `http://localhost:5173/admin/` se for testar localmente)
+8. **Copiar URL e anon key.** Project Settings → API → *Project URL* e *anon public* → secrets `SUPABASE_URL` e `SUPABASE_ANON_KEY` do repositório no GitHub (usados pelo deploy e pelo keepalive).
+9. **Manter o projeto ativo.** Com os secrets do passo 8, o workflow *Manter Supabase ativo* faz uma leitura a cada 3 dias (o plano gratuito pausa após ~7 dias sem atividade). **Se o projeto pausar mesmo assim**, basta entrar no dashboard e clicar em *Restore/Resume project*; enquanto isso o simulador usa o snapshot e avisa.
 10. **Conferir.** `npm run verificar:producao` deve mostrar três "OK".
 
 ## Backup do banco
@@ -169,7 +175,7 @@ A senha do **Gmail institucional do SGEST** dá acesso a tudo: ao projeto Supaba
 
 ## Guia para a equipe do SGEST
 
-Endereço do painel: `https://SEU-DOMINIO/admin/`. Ao entrar, preencha **"Seu nome"** no topo: ele vai para a auditoria de tudo o que você gravar. A sessão cai após 30 minutos sem uso.
+Endereço do painel: https://matheuselrocha.github.io/simulador-remuneracao-estagio/admin/ Ao entrar, preencha **"Seu nome"** no topo: ele vai para a auditoria de tudo o que você gravar. A sessão cai após 30 minutos sem uso.
 
 ### Reajustar a bolsa ou o auxílio-transporte
 
@@ -231,6 +237,6 @@ O banco guarda **apenas** estas 5 tabelas (verificado em teste):
 
 ## Fontes e marca
 
-- As fontes em `referencias/fontes/` (Rotis, Verdana etc.) são **comerciais** e **não são versionadas**. O build copia só os 4 arquivos usados (`scripts/copiar-fontes.mjs`). Sem eles, o site usa fontes do sistema. **A publicação com as fontes depende da licença web do Senado**; confirme antes de pôr no ar.
+- As fontes são **comerciais**. O site usa e versiona só 4 arquivos woff2 em `web/public/fontes/` (Rotis Sans Serif Bold/ExtraBold, Verdana Regular/Bold), que ficam baixáveis por quem acessa o site. Os originais completos em `referencias/fontes/` (50 MB) não vão para o git. **A publicação com essas fontes pressupõe a licença web do Senado**; se a licença não cobrir, apague `web/public/fontes/` e o site passa a usar as fontes do sistema (tokens em `tokens.css`).
 - Logos: SVGs originais em `web/public/marca/`, sem alteração (o SVG usa `#008ACF` internamente; a interface usa as cores do manual).
 - Cores do manual como tokens em `web/src/styles/tokens.css`. O gradiente `189deg, 27%` foi conferido contra o degradê do logo. Texto branco sobre azul céu (4,5:1) e sobre o fim do gradiente (3,4:1) só em texto grande; para texto branco pequeno usa-se `--sf-azul-ceu-escuro` (5,8:1). O verde é só filete.

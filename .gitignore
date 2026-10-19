@@ -10,8 +10,6 @@ test-results/
 supabase/.temp/
 supabase/.branches/
 
-# Fontes comerciais: não versionar até confirmar a licença web do Senado (ver README)
+# Fontes comerciais originais (50 MB). O site usa só os 4 woff2 em web/public/fontes/.
 referencias/fontes/
 
-# Fontes comerciais copiadas no build
-web/public/fontes/
