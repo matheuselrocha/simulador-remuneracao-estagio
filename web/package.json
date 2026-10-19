@@ -1,0 +1,17 @@
+{
+  "name": "@sgest/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node ../scripts/copiar-fontes.mjs",
+    "dev": "vite",
+    "prebuild": "node ../scripts/copiar-fontes.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sgest/calc": "*"
+  }
+}

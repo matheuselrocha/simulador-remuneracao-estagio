@@ -1,0 +1,33 @@
+/*
+ * Fontes auto-hospedadas (só woff2, só os pesos usados). São comerciais:
+ * copiadas de referencias/fontes no build (scripts/copiar-fontes.mjs).
+ * Sem os arquivos, o navegador usa o fallback dos tokens.
+ */
+@font-face {
+  font-family: "Rotis Sans Serif";
+  src: url("/fontes/RotisSansSerif-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Rotis Sans Serif";
+  src: url("/fontes/RotisSansSerif-ExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: Verdana;
+  src: local("Verdana"), url("/fontes/Verdana.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: Verdana;
+  src: local("Verdana Bold"), local("Verdana-Bold"), url("/fontes/Verdana-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

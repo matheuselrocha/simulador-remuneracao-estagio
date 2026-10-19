@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simulador de Remuneração de Estágio — Senado Federal</title>
+    <meta name="description" content="Estime a bolsa de estágio e o auxílio-transporte de um mês no Senado Federal. O cálculo é feito no seu navegador." />
+    <meta name="referrer" content="no-referrer" />
+  </head>
+  <body>
+    <a class="pular" href="#form">Pular para o simulador</a>
+
+    <header class="topo">
+      <div class="topo__barra">
+        <img class="topo__logo" src="./marca/senado-horizontal-degrade.svg" alt="Senado Federal" width="465" height="200" />
+        <p class="topo__orgao">SGEST · Serviço de Gestão de Estágios</p>
+      </div>
+      <div class="faixa">
+        <div class="faixa__conteudo">
+          <p class="faixa__selo">Programa de Estágio do Senado Federal</p>
+          <h1 class="faixa__titulo">Simulador de Remuneração de Estágio</h1>
+          <p class="faixa__texto">
+            Estime quanto você vai receber na folha de um mês: bolsa de estágio + auxílio-transporte − descontos.
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <main id="conteudo" class="layout">
+      <div id="aviso-parametros" class="alerta alerta--atencao layout__largo" role="status" hidden></div>
+
+      <form id="form" class="layout__form" novalidate>
+        <!-- 1. Datas -->
+        <section class="card" aria-labelledby="t-datas">
+          <h2 class="card__titulo" id="t-datas"><span class="card__num" aria-hidden="true">1</span> Datas</h2>
+          <div class="card__corpo">
+            <div class="campo" data-campo="dataEntrada">
+              <label for="data-entrada">Data em que você entrou no Senado</label>
+              <input type="date" id="data-entrada" required aria-describedby="data-entrada-ajuda data-entrada-erro" />
+              <p class="campo__ajuda" id="data-entrada-ajuda">Está no seu termo de compromisso de estágio.</p>
+              <p class="campo__erro" id="data-entrada-erro" hidden></p>
+            </div>
+
+            <div class="campo" data-campo="folha">
+              <label for="folha">Mês da folha</label>
+              <select id="folha" aria-describedby="folha-ajuda folha-erro"></select>
+              <p class="campo__ajuda" id="folha-ajuda">A folha de um mês é depositada até o 5º dia útil do mês seguinte.</p>
+              <p class="campo__erro" id="folha-erro" hidden></p>
+            </div>
+
+            <fieldset class="campo alternancia">
+              <legend>Tipo de folha</legend>
+              <div class="alternancia__opcoes">
+                <input type="radio" name="modo" id="modo-comum" value="comum" checked />
+                <label for="modo-comum">Mês comum</label>
+                <input type="radio" name="modo" id="modo-desligamento" value="desligamento" />
+                <label for="modo-desligamento">Último mês (desligamento)</label>
+              </div>
+            </fieldset>
+
+            <div class="campo" data-campo="desligamento.dataSaida" id="bloco-saida" hidden>
+              <label for="data-saida">Data do desligamento (seu último dia de estágio)</label>
+              <input type="date" id="data-saida" aria-describedby="data-saida-ajuda data-saida-erro" />
+              <p class="campo__ajuda" id="data-saida-ajuda"></p>
+              <p class="campo__erro" id="data-saida-erro" hidden></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Ausências -->
+        <section class="card" aria-labelledby="t-ausencias">
+          <h2 class="card__titulo" id="t-ausencias">
+            <span class="card__num" aria-hidden="true">2</span> <span id="t-ausencias-texto">Ausências do mês anterior</span>
+          </h2>
+          <div class="card__corpo">
+            <p id="nota-entrada" class="nota" hidden></p>
+
+            <div id="bloco-mes-anterior">
+              <div class="campo" data-campo="mesAnterior.diasNaoPresenciais">
+                <label for="ant-nao-presenciais" id="ant-nao-presenciais-rotulo">Quantos dias úteis do mês anterior você não foi presencialmente ao Senado?</label>
+                <input type="number" id="ant-nao-presenciais" inputmode="numeric" min="0" step="1" placeholder="0" aria-describedby="ant-nao-presenciais-ajuda ant-nao-presenciais-erro" />
+                <p class="campo__ajuda" id="ant-nao-presenciais-ajuda"></p>
+                <p class="campo__erro" id="ant-nao-presenciais-erro" hidden></p>
+              </div>
+              <div class="campo" data-campo="mesAnterior.faltasInjustificadas">
+                <label for="ant-faltas" id="ant-faltas-rotulo">Desses dias, quantos foram faltas injustificadas?</label>
+                <input type="number" id="ant-faltas" inputmode="numeric" min="0" step="1" placeholder="0" aria-describedby="ant-faltas-ajuda ant-faltas-erro" />
+                <p class="campo__ajuda" id="ant-faltas-ajuda">
+                  Faltas sem justificativa, irregularidades de ponto não corrigidas e atestado sem abono descontam também a bolsa.
+                  <span class="etiqueta-regra">Regra a confirmar com o SGEST</span>
+                </p>
+                <p class="campo__erro" id="ant-faltas-erro" hidden></p>
+              </div>
+            </div>
+
+            <div id="bloco-mes-atual" hidden>
+              <h3 class="subtitulo" id="t-mes-atual">Ausências do mês do desligamento</h3>
+              <div class="campo" data-campo="desligamento.mesAtual.diasNaoPresenciais">
+                <label for="atual-nao-presenciais" id="atual-nao-presenciais-rotulo">Quantos dias úteis deste mês você não foi presencialmente ao Senado?</label>
+                <input type="number" id="atual-nao-presenciais" inputmode="numeric" min="0" step="1" placeholder="0" aria-describedby="atual-nao-presenciais-ajuda atual-nao-presenciais-erro" />
+                <p class="campo__ajuda" id="atual-nao-presenciais-ajuda"></p>
+                <p class="campo__erro" id="atual-nao-presenciais-erro" hidden></p>
+              </div>
+              <div class="campo" data-campo="desligamento.mesAtual.faltasInjustificadas">
+                <label for="atual-faltas">Desses dias, quantos foram faltas injustificadas?</label>
+                <input type="number" id="atual-faltas" inputmode="numeric" min="0" step="1" placeholder="0" aria-describedby="atual-faltas-erro" />
+                <p class="campo__erro" id="atual-faltas-erro" hidden></p>
+              </div>
+
+              <h3 class="subtitulo">Recesso indenizado</h3>
+              <p class="nota" id="recesso-info"></p>
+              <div class="campo campo--checkbox" id="bloco-recesso-1o-ano" hidden>
+                <input type="checkbox" id="recesso-1o-ano" aria-describedby="recesso-1o-ano-ajuda" />
+                <label for="recesso-1o-ano">Não tirei o recesso do 1º ano</label>
+                <p class="campo__ajuda" id="recesso-1o-ano-ajuda">
+                  Marque se você não usou os 30 dias de recesso a que teve direito ao completar 1 ano de estágio.
+                  <span class="etiqueta-regra">Regra a confirmar com o SGEST</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </form>
+
+      <!-- 3. Resultado -->
+      <section class="card card--resultado layout__resultado" aria-labelledby="t-resultado">
+        <h2 class="card__titulo card__titulo--destaque" id="t-resultado"><span class="card__num" aria-hidden="true">3</span> Resultado</h2>
+        <div class="card__corpo">
+          <div class="destaque" aria-live="polite" aria-atomic="true" id="resumo"></div>
+          <div id="extrato"></div>
+          <p class="aviso-oficial">
+            <strong>Valor estimado.</strong> Os valores oficiais são processados pelo agente integrador (CIEE) com base nas informações do SGEST.
+          </p>
+          <button type="button" class="botao botao--secundario nao-imprimir" id="imprimir">Imprimir ou salvar em PDF</button>
+        </div>
+      </section>
+
+      <details class="como-funciona layout__largo" id="como-funciona">
+        <summary>Como funciona o cálculo</summary>
+        <div class="como-funciona__corpo">
+          <h3>O que você recebe</h3>
+          <ul>
+            <li><strong>Bolsa de estágio:</strong> valor mensal integral de <span data-valor="bolsa">—</span>.</li>
+            <li><strong>Auxílio-transporte (AT):</strong> <span data-valor="at">—</span> por dia útil do mês. Só é devido nos dias em que você vai presencialmente ao Senado.</li>
+            <li>Dias úteis são de segunda a sexta, menos os feriados e pontos facultativos do Senado.</li>
+            <li>Bolsa e AT são depositados <strong>até o 5º dia útil do mês seguinte</strong> ao de referência.</li>
+          </ul>
+
+          <h3>Os descontos são do mês anterior</h3>
+          <p>A folha de um mês paga o valor cheio e desconta as ausências do mês anterior, para dar tempo de processar e corrigir a frequência.</p>
+          <ul>
+            <li><strong>Dia sem presença física</strong> (falta, atestado, recesso ou trabalho remoto autorizado): desconta o AT daquele dia.</li>
+            <li><strong>Falta injustificada</strong>, irregularidade na marcação de ponto ou atestado sem abono: desconta também a bolsa daquele dia (bolsa mensal ÷ 30).</li>
+            <li>No <strong>recesso</strong>, a bolsa é mantida integralmente; o AT é descontado no mês seguinte, porque recesso não é trabalho presencial.</li>
+          </ul>
+
+          <h3>Primeiro e segundo mês</h3>
+          <ul>
+            <li>No <strong>mês em que você entra</strong>, os dias anteriores à entrada são descontados na própria folha: bolsa pelos dias corridos (÷ 30) e AT pelos dias úteis.</li>
+            <li>No <strong>segundo mês</strong>, informe só as ausências a partir da sua data de entrada. Os dias anteriores já foram descontados na sua primeira folha.</li>
+          </ul>
+
+          <h3>Último mês (desligamento)</h3>
+          <ul>
+            <li>São descontadas as ausências do mês anterior e também as do próprio mês do desligamento.</li>
+            <li><strong>Recesso indenizado</strong> (só bolsa, sem AT): 30 dias para quem completou 2 anos; para quem sai antes, 2,5 dias por mês completo no período em aberto.</li>
+            <li>O contrato termina, no máximo, na véspera do dia em que você completa 2 anos de estágio.</li>
+          </ul>
+
+          <h3>Regras a confirmar com o SGEST</h3>
+          <p>Nestes pontos o simulador usa uma regra provisória e avisa quando ela afeta o resultado:</p>
+          <ul>
+            <li>Fração de mês no recesso proporcional (hoje: conta só meses completos).</li>
+            <li>Recesso do 1º ano não gozado por quem sai entre 12 e 24 meses (hoje: soma 30 dias se marcado).</li>
+            <li>Desligamento no meio do mês (hoje: bolsa por dias corridos até a saída ÷ 30 e AT por dias úteis até a saída).</li>
+            <li>Desconto do mês anterior após reajuste (hoje: usa o valor vigente no mês anterior).</li>
+            <li>Se irregularidade de ponto e atestado sem abono descontam a bolsa (hoje: sim, como falta injustificada).</li>
+          </ul>
+
+          <p class="dica"><strong>Dica SGEST:</strong> acompanhe seus lançamentos e confira sua frequência regularmente.</p>
+        </div>
+      </details>
+    </main>
+
+    <footer class="rodape">
+      <div class="rodape__conteudo">
+        <img class="rodape__logo" src="./marca/senado-horizontal-branco.svg" alt="Senado Federal" width="438" height="200" />
+        <div>
+          <p class="rodape__orgao">SGEST — Serviço de Gestão de Estágios</p>
+          <p class="rodape__privacidade">Este simulador não coleta nem guarda seus dados: o cálculo é feito no seu navegador.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="./src/simulador/main.ts"></script>
+  </body>
+</html>

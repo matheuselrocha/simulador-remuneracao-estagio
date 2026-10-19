@@ -1,0 +1,39 @@
+/*
+ * Tokens da identidade visual do Senado Federal (manual, "Padrão cromático").
+ * Trocar a hierarquia tipográfica = mudar uma linha aqui.
+ */
+:root {
+  /* Cores do manual */
+  --sf-azul-ceu: #007cc3; /* RGB 0/124/195 · Pantone 285C */
+  --sf-verde: #1da838; /* RGB 29/168/56 · Pantone 361C — só acento, nunca texto */
+  --sf-grad-inicio: #28166f; /* Pantone Reflex Blue C */
+  --sf-grad-fim: #0093dd; /* Pantone Process Cyan */
+  /* "-99° 27%" do manual: escuro em cima, claro embaixo */
+  --sf-gradiente: linear-gradient(189deg, var(--sf-grad-inicio), 27%, var(--sf-grad-fim));
+
+  /* Neutros (não definidos no manual): paleta sóbria */
+  --cor-fundo: #f3f5f8;
+  --cor-superficie: #ffffff;
+  --cor-superficie-suave: #f7f9fb;
+  --cor-texto: #1a2230;
+  --cor-texto-suave: #4a5466; /* 7,6:1 sobre branco */
+  --cor-borda: #d3dae3;
+  --cor-borda-forte: #9aa6b5;
+  --cor-link: #005a8f; /* azul céu escurecido para texto corrido (7:1) */
+  --cor-erro: #b3261e;
+  --cor-erro-fundo: #fdf0ef;
+  --cor-atencao-fundo: #fff7e0;
+  --cor-atencao-borda: #8a6100;
+  --cor-foco: var(--sf-grad-inicio);
+
+  /* Tipografia */
+  --sf-fonte-titulo: "Rotis Sans Serif", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --sf-fonte-texto: Verdana, "DejaVu Sans", "Segoe UI", Tahoma, sans-serif;
+
+  /* Espaço e forma */
+  --raio: 10px;
+  --raio-pequeno: 6px;
+  --sombra: 0 1px 2px rgb(16 24 40 / 0.06), 0 4px 16px rgb(16 24 40 / 0.06);
+  --largura-max: 1140px;
+  --gutter: 16px;
+}

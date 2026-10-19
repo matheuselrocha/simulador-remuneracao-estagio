@@ -1,0 +1,86 @@
+/* Impressão / "Salvar como PDF": só o extrato, com os dados informados. */
+@media print {
+  @page {
+    margin: 16mm 14mm;
+  }
+  body {
+    background: #fff;
+    font-size: 10.5pt;
+  }
+  .pular,
+  .faixa__texto,
+  .faixa__selo,
+  #form,
+  .como-funciona,
+  #aviso-parametros,
+  .nao-imprimir,
+  .rodape__privacidade {
+    display: none !important;
+  }
+  .topo__barra {
+    padding: 0;
+  }
+  .topo__logo {
+    height: 56px;
+  }
+  .faixa {
+    background: none;
+    color: var(--cor-texto);
+    border-bottom: 2px solid var(--sf-azul-ceu);
+  }
+  .faixa__conteudo {
+    padding: 4px 0 8px;
+  }
+  .faixa__titulo {
+    font-size: 18pt;
+  }
+  .layout {
+    display: block;
+    padding: 12px 0 0;
+  }
+  .layout__resultado {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .card {
+    box-shadow: none;
+    border: 1px solid var(--cor-borda);
+  }
+  .card__titulo {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .dados-informados {
+    display: block;
+    margin-top: 16px;
+    break-inside: avoid;
+  }
+  .dados-informados h3 {
+    font-size: 11pt;
+    margin-bottom: 6px;
+  }
+  .dados-informados dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 16px;
+    margin: 0;
+  }
+  .dados-informados dt {
+    color: var(--cor-texto-suave);
+  }
+  .dados-informados dd {
+    margin: 0;
+  }
+  .extrato tr {
+    break-inside: avoid;
+  }
+  .rodape {
+    margin-top: 16px;
+    background: none;
+    color: var(--cor-texto);
+  }
+  .rodape__logo {
+    display: none;
+  }
+}

@@ -3,12 +3,17 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "calc"
+    "calc",
+    "web"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
-    "test:db": "vitest run --config vitest.db.config.ts"
+    "test:db": "vitest run --config vitest.db.config.ts",
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "preview": "npm run preview -w web",
+    "snapshot": "node scripts/snapshot.ts"
   },
   "engines": {
     "node": ">=20"
