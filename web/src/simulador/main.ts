@@ -6,6 +6,8 @@
 import "../styles/index.css";
 import {
   Calendario,
+  anoMesDe,
+  compararMeses,
   NOMES_MESES,
   TITULOS_GRUPOS,
   formatarAnoMes,
@@ -102,25 +104,51 @@ function hojeLocal(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** Última folha fechada: a do mês anterior ao atual (em outubro, a última é a de setembro). */
+function ultimaFolhaFechada(): AnoMes {
+  return mesAnterior(anoMesDe(hojeLocal()));
+}
+
+let faixaDosMeses = "";
+/**
+ * Lista do "Mês da folha": do mês de entrada até a última folha fechada,
+ * só com meses de anos cujo calendário está publicado. Sem data de entrada,
+ * começa no primeiro mês publicado. Padrão: a folha mais recente.
+ */
 function preencherMeses() {
-  const anos = [...parametros.calendario.anos].sort();
+  const anos = new Set(parametros.calendario.anos);
+  const ordenados = [...anos].sort((a, b) => a - b);
+  const ultima = ultimaFolhaFechada();
+  const entrada = dataCompleta(campos.dataEntrada.value) ? anoMesDe(campos.dataEntrada.value) : null;
+
+  const meses: AnoMes[] = [];
+  if (ordenados.length > 0) {
+    const primeiroPublicado: AnoMes = { ano: ordenados[0]!, mes: 1 };
+    let m = entrada && compararMeses(entrada, primeiroPublicado) > 0 ? entrada : primeiroPublicado;
+    for (; compararMeses(m, ultima) <= 0; m = proximoMes(m)) if (anos.has(m.ano)) meses.push(m);
+  }
+
+  const chave = meses.map((m) => `${m.ano}-${m.mes}`).join(",");
+  if (chave === faixaDosMeses) return;
+  faixaDosMeses = chave;
+
+  const anterior = campos.folha.value;
   campos.folha.replaceChildren();
-  if (anos.length === 0) {
-    campos.folha.append(el("option", { value: "" }, "Nenhum calendário publicado"));
+  if (meses.length === 0) {
+    campos.folha.append(el("option", { value: "" }, ordenados.length === 0 ? "Nenhum calendário publicado" : "Nenhuma folha fechada ainda"));
     campos.folha.disabled = true;
     return;
   }
-  for (const ano of anos) {
+  campos.folha.disabled = false;
+  for (const ano of [...new Set(meses.map((m) => m.ano))]) {
     const grupo = el("optgroup", { label: String(ano) });
-    NOMES_MESES.forEach((nome, i) => {
-      grupo.append(el("option", { value: `${ano}-${String(i + 1).padStart(2, "0")}` }, `${nome}/${ano}`));
-    });
+    for (const m of meses.filter((x) => x.ano === ano)) {
+      grupo.append(el("option", { value: `${ano}-${String(m.mes).padStart(2, "0")}` }, `${NOMES_MESES[m.mes - 1]}/${ano}`));
+    }
     campos.folha.append(grupo);
   }
-  // Padrão: mês atual, se o ano estiver publicado; senão o mês publicado mais próximo.
-  const hoje = hojeLocal().slice(0, 7);
   const valores = [...campos.folha.options].map((o) => o.value);
-  campos.folha.value = valores.includes(hoje) ? hoje : hoje < valores[0]! ? valores[0]! : valores[valores.length - 1]!;
+  campos.folha.value = valores.includes(anterior) ? anterior : valores[valores.length - 1]!;
 }
 
 function avisoParametros(origem: OrigemParametros) {
@@ -347,11 +375,15 @@ function definirResumo(html: string) {
 }
 
 function atualizar() {
+  preencherMeses();
   const folha = lerFolha();
-  if (!folha) return;
+  if (!folha) {
+    semFolhaDisponivel();
+    return;
+  }
   if (modo() === "desligamento") ajustarDataSaida(folha);
   else ultimoAjusteSaida = "";
-  definirAtributo(campos.dataEntrada, "max", ultimoDia(folha));
+  definirAtributo(campos.dataEntrada, "max", hojeLocal());
 
   const extrato = $("extrato");
   limparErros();
@@ -413,6 +445,23 @@ function preencherComoFunciona() {
 }
 
 // ───────────────────────── Início ─────────────────────────
+
+/** Quem entrou no mês atual ainda não tem folha fechada (ou não há calendário publicado). */
+function semFolhaDisponivel() {
+  limparErros();
+  $("extrato").replaceChildren();
+  const entrada = dataCompleta(campos.dataEntrada.value) ? anoMesDe(campos.dataEntrada.value) : null;
+  const ultima = ultimaFolhaFechada();
+  if (entrada && compararMeses(entrada, ultima) > 0) {
+    const pagamento = proximoMes(entrada);
+    definirResumo(
+      `<p class="destaque__vazio">Sua primeira folha será a de <strong>${formatarAnoMes(entrada)}</strong>, paga até o 5º dia útil de ${nomeMes(pagamento.mes)}. ` +
+        `A simulação dela fica disponível a partir de ${formatarData(primeiroDia(pagamento))}.</p>`,
+    );
+  } else {
+    definirResumo(`<p class="destaque__vazio">Ainda não há calendário publicado pelo SGEST para simular.</p>`);
+  }
+}
 
 async function iniciar() {
   const { parametros: p, origem } = await carregarParametros();
