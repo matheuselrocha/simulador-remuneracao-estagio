@@ -58,7 +58,8 @@ body.admin {
   min-height: 100vh;
 }
 .painel__menu {
-  background: var(--sf-gradiente);
+  /* sólido: os links pequenos não passariam AA sobre a parte clara do gradiente */
+  background: var(--sf-grad-inicio);
   color: #fff;
   padding: 12px 14px 20px;
   display: flex;
@@ -370,8 +371,8 @@ body.admin {
 }
 .selo--vigente {
   background: #eef8f0;
-  border-color: #1f7a33;
-  color: #165c26;
+  border-color: var(--sf-verde); /* verde só como filete */
+  color: var(--cor-texto);
 }
 .selo--futuro {
   background: #e8f3fb;
@@ -402,7 +403,7 @@ body.admin {
   color: var(--cor-link);
 }
 .botao--aba[aria-pressed="true"] {
-  background: var(--sf-azul-ceu);
+  background: var(--sf-azul-ceu-escuro);
   color: #fff;
 }
 .criar-ano label {
@@ -493,7 +494,7 @@ body.admin {
   font-weight: 700;
 }
 .dia--ponto_facultativo {
-  background: var(--sf-azul-ceu);
+  background: var(--sf-azul-ceu-escuro);
   color: #fff;
   font-weight: 700;
 }

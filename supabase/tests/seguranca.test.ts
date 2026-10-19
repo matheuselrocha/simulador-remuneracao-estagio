@@ -5,6 +5,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type pg from "pg";
 import {
+  ANON_KEY,
+  API_URL,
   clienteAnon,
   conexaoPostgres,
   criarUsuario,
@@ -97,6 +99,11 @@ describe("anon (simulador público)", () => {
 });
 
 describe("Auth", () => {
+  it("/auth/v1/settings informa cadastro desativado", async () => {
+    const r = await fetch(`${API_URL}/auth/v1/settings`, { headers: { apikey: ANON_KEY } });
+    expect(((await r.json()) as { disable_signup: boolean }).disable_signup).toBe(true);
+  });
+
   it("signUp com e-mail novo falha (cadastro público desativado)", async () => {
     const r = await clienteAnon().auth.signUp({ email: `novo-${Date.now()}@sgest.test`, password: "uma-senha-bem-longa-123" });
     expect(r.error).not.toBeNull();
