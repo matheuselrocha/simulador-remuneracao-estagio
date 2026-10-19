@@ -21,7 +21,9 @@ export function ehDataISO(valor: string): boolean {
   const m = RE_ISO.exec(valor);
   if (!m) return false;
   const [a, me, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  return me >= 1 && me <= 12 && d >= 1 && d <= diasNoMes(a, me);
+  // Faixa plausível: evita datas parciais da digitação (0002-11-25) e o Date.UTC,
+  // que trata os anos 0–99 como 1900–1999.
+  return a >= 1900 && a <= 2200 && me >= 1 && me <= 12 && d >= 1 && d <= diasNoMes(a, me);
 }
 
 export function partes(data: DataISO): { ano: number; mes: number; dia: number } {

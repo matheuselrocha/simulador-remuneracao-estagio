@@ -138,10 +138,28 @@ function diasUteisTexto(n: number) {
   return `${n} ${n === 1 ? "dia útil" : "dias úteis"}`;
 }
 
+/**
+ * Só escreve o atributo se ele mudou. Reescrever atributos de um <input type="date">
+ * enquanto a pessoa digita faz o Chrome reiniciar a edição do campo (o ano
+ * digitado dígito a dígito se perde e a data é apagada).
+ */
+function definirAtributo(no: HTMLElement, nome: string, valor: string | null) {
+  if (valor === null) {
+    if (no.hasAttribute(nome)) no.removeAttribute(nome);
+  } else if (no.getAttribute(nome) !== valor) {
+    no.setAttribute(nome, valor);
+  }
+}
+
+/** Enquanto o ano está sendo digitado o navegador entrega datas como 0002-11-25: tratamos como incompleta. */
+function dataCompleta(valor: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number(valor.slice(0, 4)) >= 1900;
+}
+
 function limparErros() {
   for (const id of Object.values(INPUT_DO_CAMPO)) {
     const input = $(id);
-    input.removeAttribute("aria-invalid");
+    definirAtributo(input, "aria-invalid", null);
     const erro = document.getElementById(`${id}-erro`);
     if (erro) {
       erro.hidden = true;
@@ -152,7 +170,7 @@ function limparErros() {
 
 function mostrarErro(campo: CampoEntrada, mensagem: string) {
   const id = INPUT_DO_CAMPO[campo];
-  $(id).setAttribute("aria-invalid", "true");
+  definirAtributo($(id), "aria-invalid", "true");
   const erro = document.getElementById(`${id}-erro`);
   if (erro) {
     erro.hidden = false;
@@ -160,12 +178,19 @@ function mostrarErro(campo: CampoEntrada, mensagem: string) {
   }
 }
 
-/** Ajusta a data de saída para dentro do mês da folha quando o mês ou o modo mudam. */
+let ultimoAjusteSaida = "";
+/**
+ * Ajusta a data de saída para dentro do mês da folha só quando o mês ou o modo
+ * mudam — nunca enquanto a pessoa digita a própria data de saída.
+ */
 function ajustarDataSaida(folha: AnoMes) {
   const min = primeiroDia(folha);
   const max = ultimoDia(folha);
-  campos.dataSaida.min = min;
-  campos.dataSaida.max = max;
+  definirAtributo(campos.dataSaida, "min", min);
+  definirAtributo(campos.dataSaida, "max", max);
+  const chave = `${min}|${modo()}`;
+  if (chave === ultimoAjusteSaida) return;
+  ultimoAjusteSaida = chave;
   const v = campos.dataSaida.value;
   if (!v || v < min || v > max) campos.dataSaida.value = max;
 }
@@ -210,7 +235,7 @@ function atualizarRotulos(folha: AnoMes, ctx: ContextoFolha | null) {
   $("ant-nao-presenciais-ajuda").textContent = ctx?.mesAnteriorEhEntrada
     ? "Conte só os dias a partir da sua data de entrada. Os dias anteriores já foram descontados na sua primeira folha."
     : "Conte faltas, atestados, recesso e trabalho remoto autorizado: o auxílio-transporte só é devido em dia presencial.";
-  campos.antNaoPres.max = ctx?.maxNaoPresenciaisMesAnterior != null ? String(ctx.maxNaoPresenciaisMesAnterior) : "";
+  definirAtributo(campos.antNaoPres, "max", ctx?.maxNaoPresenciaisMesAnterior != null ? String(ctx.maxNaoPresenciaisMesAnterior) : null);
 
   // Mês do desligamento
   if (desligamento) {
@@ -221,7 +246,7 @@ function atualizarRotulos(folha: AnoMes, ctx: ContextoFolha | null) {
       `Quantos dias úteis de ${nome.toUpperCase()} você não foi presencialmente ao Senado?` +
       (max != null ? ` (até a saída foram ${diasUteisTexto(max)})` : "");
     $("atual-nao-presenciais-ajuda").textContent = "Neste mês as ausências são descontadas na própria folha, porque não haverá folha seguinte.";
-    campos.atualNaoPres.max = max != null ? String(max) : "";
+    definirAtributo(campos.atualNaoPres, "max", max != null ? String(max) : null);
     $("bloco-recesso-1o-ano").hidden = !ctx?.podeInformarRecessoPrimeiroAno;
     $("recesso-info").textContent =
       "Quem completa 2 anos recebe 30 dias de recesso; quem sai antes recebe 2,5 dias por mês completo do período em aberto. O recesso indenizado é só bolsa, sem auxílio-transporte.";
@@ -325,15 +350,19 @@ function atualizar() {
   const folha = lerFolha();
   if (!folha) return;
   if (modo() === "desligamento") ajustarDataSaida(folha);
-  campos.dataEntrada.max = ultimoDia(folha);
+  else ultimoAjusteSaida = "";
+  definirAtributo(campos.dataEntrada, "max", ultimoDia(folha));
 
   const extrato = $("extrato");
   limparErros();
 
-  if (!campos.dataEntrada.value) {
+  const saidaIncompleta = modo() === "desligamento" && campos.dataSaida.value !== "" && !dataCompleta(campos.dataSaida.value);
+  if (!dataCompleta(campos.dataEntrada.value) || saidaIncompleta) {
     atualizarRotulos(folha, null);
     extrato.replaceChildren();
-    definirResumo(`<p class="destaque__vazio">Informe sua data de entrada para ver a estimativa.</p>`);
+    definirResumo(
+      `<p class="destaque__vazio">${saidaIncompleta ? "Termine de informar a data do desligamento." : "Informe sua data de entrada para ver a estimativa."}</p>`,
+    );
     return;
   }
 
