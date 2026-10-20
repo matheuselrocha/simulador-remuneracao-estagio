@@ -230,7 +230,7 @@ Outras decisões que vale confirmar:
 - **Feriados de 2026**: a planilha só tinha as datas; descrições e tipos do seed foram inferidos e marcados "a conferir". **29/06/2026** não tem descrição conhecida.
 - **Data final do contrato** de quem entra em 29/02: entrada + 2 anos − 1 dia = 28/02.
 - Um novo valor não pode ter vigência anterior ao mês atual (não reescreve folhas passadas).
-- **Bolsa diária = bolsa mensal ÷ número de dias do mês** (28 a 31), por decisão do SGEST em 20/10/2026, no lugar do divisor fixo 30 da especificação original. Vale para a 1ª folha proporcional (dias corridos desde a entrada), faltas injustificadas (dias do mês da falta), desligamento no meio do mês e recesso indenizado (dias do mês do desligamento). A coluna `valores.divisor` do banco ficou como legado e não é usada. Consequência a confirmar: 30 dias de recesso num mês de 31 dias valem menos que uma bolsa cheia (R$ 1.586,64 em vez de R$ 1.639,53).
+- **Bolsa diária = bolsa mensal ÷ número de dias do mês** (28 a 31), por decisão do SGEST em 20/10/2026, no lugar do divisor fixo 30 da especificação original. Vale para a 1ª folha proporcional (dias corridos desde a entrada), faltas injustificadas (dias do mês da falta) e desligamento no meio do mês. **Exceção: recesso indenizado usa bolsa ÷ 30** (30 dias de recesso = uma bolsa cheia, também decisão do SGEST). A coluna `valores.divisor` do banco ficou como legado e não é usada.
 
 ## Modelo de dados e privacidade
 

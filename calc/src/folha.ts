@@ -156,6 +156,10 @@ export const TITULOS_GRUPOS: Record<GrupoExtrato, string> = {
 /** Bolsa diária = bolsa mensal ÷ número de dias do mês a que o dia se refere (28, 29, 30 ou 31). */
 const contaBolsaDiaria = (b: ValorBolsa, mes: AnoMes) => `(${formatarMoeda(b.centavos)} ÷ ${diasNoMes(mes.ano, mes.mes)})`;
 const valorDiasDeBolsa = (dias: number, b: ValorBolsa, mes: AnoMes) => multiplicarArredondado(dias, b.centavos, diasNoMes(mes.ano, mes.mes));
+/** Recesso: exceção à regra acima. 30 dias de recesso = uma bolsa cheia, então o dia de recesso vale bolsa ÷ 30. */
+const DIVISOR_RECESSO = 30;
+const contaDiaRecesso = (b: ValorBolsa) => `(${formatarMoeda(b.centavos)} ÷ ${DIVISOR_RECESSO})`;
+const valorDiasDeRecesso = (dias: number, b: ValorBolsa) => multiplicarArredondado(dias, b.centavos, DIVISOR_RECESSO);
 
 function diasCorridos(n: number) {
   return formatarDias(n);
@@ -556,8 +560,8 @@ function linhasRecesso(
       grupo: "recesso",
       natureza: "credito",
       descricao: `Recesso indenizado (${proporcional})`,
-      conta: `${formatarDias(diasPeriodo)} × ${contaBolsaDiaria(bolsa, contexto.folha)}`,
-      centavos: valorDiasDeBolsa(diasPeriodo, bolsa, contexto.folha),
+      conta: `${formatarDias(diasPeriodo)} × ${contaDiaRecesso(bolsa)}`,
+      centavos: valorDiasDeRecesso(diasPeriodo, bolsa),
     });
   }
   if (r.somouPrimeiroAno) {
@@ -565,8 +569,8 @@ function linhasRecesso(
       grupo: "recesso",
       natureza: "credito",
       descricao: "Recesso do 1º ano não gozado",
-      conta: `30 dias × ${contaBolsaDiaria(bolsa, contexto.folha)}`,
-      centavos: valorDiasDeBolsa(30, bolsa, contexto.folha),
+      conta: `30 dias × ${contaDiaRecesso(bolsa)}`,
+      centavos: valorDiasDeRecesso(30, bolsa),
     });
   }
   return linhas;
