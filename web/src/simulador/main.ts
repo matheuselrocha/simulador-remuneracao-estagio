@@ -76,8 +76,21 @@ function lerDias(input: HTMLInputElement): number {
   return input.validity.badInput ? Number.NaN : Number(v);
 }
 
+/**
+ * Recursos que podem ser ligados/desligados sem apagar código.
+ * desligamento: modo "Último mês (desligamento)" — DESATIVADO até validação das
+ * regras pelo SGEST (recesso proporcional, desligamento no meio do mês etc.).
+ * Para reativar: true aqui (o HTML marcado com data-recurso="desligamento" volta a aparecer).
+ */
+const RECURSOS = { desligamento: false } as const;
+
+function aplicarRecursos() {
+  document.querySelectorAll<HTMLElement>("[data-recurso=desligamento]").forEach((n) => (n.hidden = !RECURSOS.desligamento));
+  if (!RECURSOS.desligamento) campos.modoComum.checked = true;
+}
+
 function modo(): "comum" | "desligamento" {
-  return campos.modoDeslig.checked ? "desligamento" : "comum";
+  return RECURSOS.desligamento && campos.modoDeslig.checked ? "desligamento" : "comum";
 }
 
 function lerEntrada(folha: AnoMes): EntradaSimulacao {
@@ -469,6 +482,7 @@ async function iniciar() {
   parametros = p;
   calendario = new Calendario(p.calendario);
   avisoParametros(origem);
+  aplicarRecursos();
   preencherMeses();
 
   const form = $<HTMLFormElement>("form");
