@@ -30,14 +30,37 @@ describe("seção 9 — testes obrigatórios", () => {
     expect(dias).toEqual([21, 17, 22, 18, 20, 19, 23, 21, 21, 20, 19, 20]);
   });
 
-  it("2. folha set/2026, entrada 15/09/2026", () => {
+  it("2. folha set/2026, entrada 15/09/2026: 1ª folha proporcional, sem descontos", () => {
     const r = ok(simularFolha(comum("2026-09-15", 2026, 9), parametros2026()));
-    expect(totalGrupo(r, "entrada", "desconto", "bolsa")).toBe(76511);
-    const at = r.linhas.find((l) => l.grupo === "entrada" && l.descricao.includes("auxílio"))!;
-    expect(at.centavos).toBe(12150);
-    expect(at.conta).toBe("9 dias úteis × R$ 13,50");
+    // Equivale a bolsa − 765,11 e AT − 121,50 (9 dias úteis antes da entrada) da regra 4.3
+    const [bolsa, at] = r.linhas;
+    expect(bolsa!.descricao).toBe("Bolsa de estágio proporcional (de 15/09 a 30/09)");
+    expect(bolsa!.conta).toBe("16 dias × (R$ 1.639,53 ÷ 30)");
+    expect(bolsa!.centavos).toBe(163953 - 76511);
+    expect(at!.conta).toBe("12 dias úteis × R$ 13,50");
+    expect(at!.centavos).toBe(28350 - 12150);
+    expect(r.descontosCentavos).toBe(0);
+    expect(r.linhas.every((l) => l.natureza === "credito")).toBe(true);
     expect(r.liquidoCentavos).toBe(103642);
     expect(r.contexto.ehMesDeEntrada).toBe(true);
+  });
+
+  it("2b. entrada 20/09/2026 (domingo): 11 dias de bolsa e 8 dias úteis de AT", () => {
+    const r = ok(simularFolha(comum("2026-09-20", 2026, 9), parametros2026()));
+    expect(r.linhas.map((l) => l.conta)).toEqual(["11 dias × (R$ 1.639,53 ÷ 30)", "8 dias úteis × R$ 13,50"]);
+    expect(r.liquidoCentavos).toBe(60116 + 10800);
+  });
+
+  it("2c. 1ª folha em mês de 31 dias: entrada 20/10/2026 → 12 dias × (bolsa ÷ 31)", () => {
+    const r = ok(simularFolha(comum("2026-10-20", 2026, 10), parametros2026()));
+    expect(r.linhas.map((l) => l.conta)).toEqual(["12 dias × (R$ 1.639,53 ÷ 31)", "8 dias úteis × R$ 13,50"]);
+    expect(r.linhas[0]!.centavos).toBe(63466); // 634,657
+  });
+
+  it("2d. 1ª folha em fevereiro: entrada 20/02/2026 → 9 dias × (bolsa ÷ 28)", () => {
+    const r = ok(simularFolha(comum("2026-02-20", 2026, 2), parametros2026()));
+    expect(r.linhas.map((l) => l.conta)).toEqual(["9 dias × (R$ 1.639,53 ÷ 28)", "6 dias úteis × R$ 13,50"]);
+    expect(r.linhas[0]!.centavos).toBe(52699); // 526,99
   });
 
   it("3. folha set/2026, entrada antiga, agosto sem ausências", () => {
@@ -53,18 +76,29 @@ describe("seção 9 — testes obrigatórios", () => {
     expect(r.liquidoCentavos).toBe(186903);
   });
 
-  it("5. idem, agosto com 3 dias não presenciais, todos injustificados", () => {
+  it("5. idem, agosto com 3 dias não presenciais, todos injustificados (bolsa diária de agosto = ÷ 31)", () => {
     const r = ok(simularFolha(comum(ENTRADA_ANTIGA, 2026, 9, { diasNaoPresenciais: 3, faltasInjustificadas: 3 }), parametros2026()));
     const bolsa = r.linhas.find((l) => l.grupo === "mes-anterior" && l.descricao.includes("bolsa"))!;
-    expect(bolsa.centavos).toBe(16395); // 3 × 1639,53/30 = 163,953 → 163,95 (e não 3 × 54,65)
-    expect(bolsa.conta).toBe("3 dias × (R$ 1.639,53 ÷ 30)");
+    // Regra atual: bolsa diária varia com os dias do mês. 3 × 1639,53/31 = 158,664 → 158,66
+    // (a especificação original usava ÷ 30: 163,95 e líquido 1.718,58)
+    expect(bolsa.centavos).toBe(15866);
+    expect(bolsa.conta).toBe("3 dias × (R$ 1.639,53 ÷ 31)");
     expect(totalGrupo(r, "mes-anterior", "desconto", "auxílio")).toBe(4050);
-    expect(r.liquidoCentavos).toBe(171858);
+    expect(r.liquidoCentavos).toBe(192303 - 15866 - 4050);
   });
 
-  it("6. entrada no dia 1º do mês: nenhum desconto de entrante", () => {
+  it("5b. faltas de setembro (30 dias) usam ÷ 30 e de fevereiro (28 dias) usam ÷ 28", () => {
+    const out = ok(simularFolha(comum(ENTRADA_ANTIGA, 2026, 10, { diasNaoPresenciais: 1, faltasInjustificadas: 1 }), parametros2026()));
+    expect(out.linhas.find((l) => l.descricao.includes("Faltas"))!.conta).toBe("1 dia × (R$ 1.639,53 ÷ 30)");
+    expect(out.linhas.find((l) => l.descricao.includes("Faltas"))!.centavos).toBe(5465);
+    const mar = ok(simularFolha(comum(ENTRADA_ANTIGA, 2026, 3, { diasNaoPresenciais: 1, faltasInjustificadas: 1 }), parametros2026()));
+    expect(mar.linhas.find((l) => l.descricao.includes("Faltas"))!.conta).toBe("1 dia × (R$ 1.639,53 ÷ 28)");
+    expect(mar.linhas.find((l) => l.descricao.includes("Faltas"))!.centavos).toBe(5855); // 58,554
+  });
+
+  it("6. entrada no dia 1º do mês: bolsa e AT integrais", () => {
     const r = ok(simularFolha(comum("2026-09-01", 2026, 9), parametros2026()));
-    expect(r.linhas.filter((l) => l.grupo === "entrada")).toEqual([]);
+    expect(r.linhas.map((l) => l.descricao)).toEqual(["Bolsa de estágio", "Auxílio-transporte de setembro"]);
     expect(r.liquidoCentavos).toBe(192303);
   });
 
@@ -132,8 +166,8 @@ describe("seção 9 — testes obrigatórios", () => {
   const reajuste = () =>
     parametros2026({
       bolsa: [
-        { inicio: "2026-01-01", centavos: 163953, divisor: 30 },
-        { inicio: "2026-11-01", centavos: 170000, divisor: 30 },
+        { inicio: "2026-01-01", centavos: 163953 },
+        { inicio: "2026-11-01", centavos: 170000 },
       ],
     });
 

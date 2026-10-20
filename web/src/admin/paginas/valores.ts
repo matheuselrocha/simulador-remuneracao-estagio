@@ -39,14 +39,14 @@ function previaImpacto(p: Parametros, tipo: "bolsa" | "at", centavos: number, me
     const sem = valores.filter((v) => v.id !== idIgnorado);
     antes = {
       ...p,
-      bolsa: sem.filter((v) => v.tipo === "bolsa").map((v) => ({ inicio: v.vigencia_inicio, centavos: v.valor_centavos, divisor: v.divisor ?? 30 })),
+      bolsa: sem.filter((v) => v.tipo === "bolsa").map((v) => ({ inicio: v.vigencia_inicio, centavos: v.valor_centavos })),
       at: sem.filter((v) => v.tipo === "at").map((v) => ({ inicio: v.vigencia_inicio, centavos: v.valor_centavos })),
     };
   }
   const inicio = primeiroDia(mes);
   const depois: Parametros =
     tipo === "bolsa"
-      ? { ...antes, bolsa: [...antes.bolsa.filter((b) => b.inicio !== inicio), { inicio, centavos, divisor: 30 }] }
+      ? { ...antes, bolsa: [...antes.bolsa.filter((b) => b.inicio !== inicio), { inicio, centavos }] }
       : { ...antes, at: [...antes.at.filter((a) => a.inicio !== inicio), { inicio, centavos }] };
   const a = brutoSemAusencias(antes, mes);
   const d = brutoSemAusencias(depois, mes);
@@ -180,7 +180,7 @@ function formularioNovo(dados: DadosPainel, p: Parametros, hoje: string, mesAtua
     const { error } = await supabase.from("valores").insert({
       tipo: t,
       valor_centavos: ok.c,
-      divisor: t === "bolsa" ? 30 : null,
+      divisor: t === "bolsa" ? 30 : null, // exigido pela constraint do banco; o motor usa os dias do mês
       vigencia_inicio: primeiroDia(ok.mes),
       responsavel: nome,
     });

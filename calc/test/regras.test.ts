@@ -121,6 +121,23 @@ describe("desligamento e recesso (4.5 e 4.6.1–4.6.3)", () => {
     desligamento: { dataSaida, mesAtual: SEM_AUSENCIAS, naoGozouRecessoPrimeiroAno: naoGozou },
   });
 
+  it("recesso usa bolsa ÷ 30 mesmo em mês de 31 dias: 2 anos completos = uma bolsa cheia", () => {
+    const r = simularFolha(deslig("2024-11-01", "2026-10-31", false, 10), parametros2026());
+    if (!r.ok) throw new Error(JSON.stringify(r.erros));
+    const recesso = r.linhas.filter((l) => l.grupo === "recesso");
+    expect(recesso.map((l) => [l.conta, l.centavos])).toEqual([["30 dias × (R$ 1.639,53 ÷ 30)", 163953]]);
+    // já a bolsa do mês e as faltas seguem os dias do mês (outubro: ÷ 31)
+  });
+
+  it("recesso proporcional em mês de 31 dias também usa ÷ 30", () => {
+    // entrada 01/03/2026, saída 31/10/2026: 8 meses completos → 20 dias
+    const r = simularFolha(deslig("2026-03-01", "2026-10-31", false, 10), parametros2026());
+    if (!r.ok) throw new Error(JSON.stringify(r.erros));
+    const recesso = r.linhas.find((l) => l.grupo === "recesso")!;
+    expect(recesso.conta).toBe("20 dias × (R$ 1.639,53 ÷ 30)");
+    expect(recesso.centavos).toBe(multiplicarArredondado(20, 163953, 30));
+  });
+
   it("menos de 1 ano: 2,5 dias por mês completo, fração ignorada com aviso", () => {
     // 01/03/2026 a 20/09/2026: 6 meses completos + fração
     const d = calcularDiasRecesso("2026-03-01", "2026-09-20", false);
@@ -140,6 +157,13 @@ describe("desligamento e recesso (4.5 e 4.6.1–4.6.3)", () => {
     const r = simularFolha(deslig("2026-03-01", "2026-09-30", true), parametros2026());
     expect(r.contexto!.podeInformarRecessoPrimeiroAno).toBe(false);
     expect(r.ok && r.linhas.filter((l) => l.grupo === "recesso").length).toBe(1);
+  });
+
+  it("entrada e desligamento no mesmo mês: proporcional entre as duas datas", () => {
+    // 15/09 a 18/09/2026: 4 dias de bolsa; dias úteis 15, 16, 17, 18 = 4
+    const r = simularFolha(deslig("2026-09-15", "2026-09-18"), parametros2026());
+    if (!r.ok) throw new Error(JSON.stringify(r.erros));
+    expect(r.linhas.filter((l) => l.grupo === "mes-da-folha").map((l) => l.conta)).toEqual(["4 dias × (R$ 1.639,53 ÷ 30)", "4 dias úteis × R$ 13,50"]);
   });
 
   it("desligamento no meio do mês: bolsa por dias corridos e AT por dias úteis até a saída", () => {

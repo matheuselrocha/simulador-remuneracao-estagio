@@ -12,10 +12,12 @@ export interface ValorVigente {
   centavos: Centavos;
 }
 
-export interface ValorBolsa extends ValorVigente {
-  /** Divisor da bolsa diária. Regra 4.1: sempre 30. */
-  divisor: number;
-}
+/**
+ * Bolsa mensal. A bolsa diária não é parâmetro: é a bolsa ÷ número de dias do
+ * mês a que o dia se refere (28 a 31). A coluna `divisor` do banco é legado e
+ * não é usada pelo motor.
+ */
+export type ValorBolsa = ValorVigente;
 
 export interface Parametros {
   bolsa: readonly ValorBolsa[];
