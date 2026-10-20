@@ -230,6 +230,7 @@ Outras decisões que vale confirmar:
 - **Feriados de 2026**: a planilha só tinha as datas; descrições e tipos do seed foram inferidos e marcados "a conferir". **29/06/2026** não tem descrição conhecida.
 - **Data final do contrato** de quem entra em 29/02: entrada + 2 anos − 1 dia = 28/02.
 - Um novo valor não pode ter vigência anterior ao mês atual (não reescreve folhas passadas).
+- **1ª folha proporcional:** a bolsa é paga por `min(dia final, 30) − (dia de entrada − 1)` dias × bolsa ÷ 30 (mês comercial de 30 dias, mesmo valor da regra 4.3). Em meses de 31 dias isso dá 1 dia a menos que os dias corridos (entrada em 20/10 → 11 dias), e em fevereiro dá mais (entrada em 20/02 → 11 dias). O AT usa os dias úteis reais a partir da entrada.
 
 ## Modelo de dados e privacidade
 

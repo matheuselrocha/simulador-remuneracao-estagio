@@ -61,7 +61,7 @@ export interface EntradaSimulacao {
   desligamento?: DadosDesligamento;
 }
 
-export type GrupoExtrato = "mes-da-folha" | "entrada" | "mes-anterior" | "mes-atual" | "recesso";
+export type GrupoExtrato = "mes-da-folha" | "mes-anterior" | "mes-atual" | "recesso";
 
 export interface LinhaExtrato {
   grupo: GrupoExtrato;
@@ -145,7 +145,6 @@ export type ResultadoSimulacao =
 
 export const TITULOS_GRUPOS: Record<GrupoExtrato, string> = {
   "mes-da-folha": "Valores do mês",
-  entrada: "Descontos de entrada",
   "mes-anterior": "Descontos do mês anterior",
   "mes-atual": "Descontos do mês do desligamento",
   recesso: "Recesso indenizado",
@@ -390,32 +389,13 @@ export function simularFolha(
   // ───────────────────────────── Cálculo ─────────────────────────────
   const linhas: LinhaExtrato[] = [];
 
-  // Créditos do mês (com proporcionalidade do desligamento, regra 4.6.3)
-  if (fimCredito < ultimoDia(folha)) {
-    const diaSaida = partes(fimCredito).dia;
-    const diasPagos = Math.min(diaSaida, bolsaM.divisor);
-    linhas.push({
-      grupo: "mes-da-folha",
-      natureza: "credito",
-      descricao: `Bolsa de estágio (até ${formatarData(fimCredito)})`,
-      conta: `${diasCorridos(diasPagos)} × ${contaBolsaDiaria(bolsaM)}`,
-      centavos: multiplicarArredondado(diasPagos, bolsaM.centavos, bolsaM.divisor),
-    });
-    const du = cal.diasUteisEntre(primeiroDia(folha), fimCredito);
-    linhas.push({
-      grupo: "mes-da-folha",
-      natureza: "credito",
-      descricao: `Auxílio-transporte (até ${formatarData(fimCredito)})`,
-      conta: `${diasUteis(du)} × ${formatarMoeda(atM.centavos)}`,
-      centavos: multiplicarArredondado(du, atM.centavos),
-    });
-    avisos.push({
-      codigo: "regra-desligamento-meio-do-mes",
-      regraAConfirmar: true,
-      mensagem:
-        "Desligamento antes do fim do mês: a bolsa foi calculada por dias corridos até a saída (÷ 30) e o auxílio-transporte pelos dias úteis até a saída.",
-    });
-  } else {
+  // Créditos do mês. Mês cheio: bolsa integral + AT de todos os dias úteis.
+  // 1ª folha (regra 4.3) e/ou desligamento no meio do mês (4.6.3): bolsa e AT
+  // proporcionais ao período de vínculo no mês — sem linhas de desconto.
+  // Bolsa proporcional em mês comercial de 30 dias: paga min(dia final, 30) − (dia inicial − 1)
+  // dias × bolsa ÷ 30 — o mesmo valor de "bolsa − (dia de entrada − 1) × bolsa ÷ 30" da regra 4.3.
+  const inicioCredito = ehMesDeEntrada ? dataEntrada : primeiroDia(folha);
+  if (inicioCredito === primeiroDia(folha) && fimCredito === ultimoDia(folha)) {
     linhas.push({
       grupo: "mes-da-folha",
       natureza: "credito",
@@ -430,31 +410,38 @@ export function simularFolha(
       conta: `${diasUteis(contexto.diasUteisFolha)} × ${formatarMoeda(atM.centavos)}`,
       centavos: multiplicarArredondado(contexto.diasUteisFolha, atM.centavos),
     });
+  } else {
+    const diaInicio = partes(inicioCredito).dia;
+    const diaFim = partes(fimCredito).dia;
+    const diasBolsa = Math.max(0, Math.min(diaFim, bolsaM.divisor) - (diaInicio - 1));
+    const periodo = `de ${formatarData(inicioCredito).slice(0, 5)} a ${formatarData(fimCredito).slice(0, 5)}`;
+    linhas.push({
+      grupo: "mes-da-folha",
+      natureza: "credito",
+      descricao: `Bolsa de estágio proporcional (${periodo})`,
+      conta: `${diasCorridos(diasBolsa)} × ${contaBolsaDiaria(bolsaM)}`,
+      centavos: multiplicarArredondado(diasBolsa, bolsaM.centavos, bolsaM.divisor),
+    });
+    const du = cal.diasUteisEntre(inicioCredito, fimCredito);
+    linhas.push({
+      grupo: "mes-da-folha",
+      natureza: "credito",
+      descricao: `Auxílio-transporte proporcional (${periodo})`,
+      conta: `${diasUteis(du)} × ${formatarMoeda(atM.centavos)}`,
+      centavos: multiplicarArredondado(du, atM.centavos),
+    });
+    if (fimCredito < ultimoDia(folha)) {
+      avisos.push({
+        codigo: "regra-desligamento-meio-do-mes",
+        regraAConfirmar: true,
+        mensagem:
+          "Desligamento antes do fim do mês: a bolsa foi calculada por dias corridos até a saída (÷ 30) e o auxílio-transporte pelos dias úteis até a saída.",
+      });
+    }
   }
 
-  // Mês de entrada (regra 4.3): desconta no próprio mês
-  if (ehMesDeEntrada) {
-    const dia = partes(dataEntrada).dia;
-    if (dia > 1) {
-      linhas.push({
-        grupo: "entrada",
-        natureza: "desconto",
-        descricao: `Dias antes da entrada, de 01 a ${String(dia - 1).padStart(2, "0")}/${String(folha.mes).padStart(2, "0")} (bolsa)`,
-        conta: `${diasCorridos(dia - 1)} × ${contaBolsaDiaria(bolsaM)}`,
-        centavos: multiplicarArredondado(dia - 1, bolsaM.centavos, bolsaM.divisor),
-      });
-      const du = cal.diasUteisEntre(primeiroDia(folha), somarDias(dataEntrada, -1));
-      if (du > 0) {
-        linhas.push({
-          grupo: "entrada",
-          natureza: "desconto",
-          descricao: "Dias úteis antes da entrada (auxílio-transporte)",
-          conta: `${diasUteis(du)} × ${formatarMoeda(atM.centavos)}`,
-          centavos: multiplicarArredondado(du, atM.centavos),
-        });
-      }
-    }
-  } else {
+  // Mês de entrada (regra 4.3): não existe mês anterior, logo não há descontos de ausências.
+  if (!ehMesDeEntrada) {
     // Mês anterior (regra 4.2), com valor vigente em M−1 (regra provisória 4.6.4)
     let bolsaAnt = bolsaM;
     let atAnt = atM;

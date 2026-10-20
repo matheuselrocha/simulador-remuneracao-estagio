@@ -243,7 +243,7 @@ function atualizarRotulos(folha: AnoMes, ctx: ContextoFolha | null) {
   const nota = $("nota-entrada");
   nota.hidden = !ehEntrada;
   nota.textContent = ehEntrada
-    ? `Você entrou em ${nomeMes(folha.mes)}: não há mês anterior a informar. Os dias antes da sua entrada são descontados nesta mesma folha.`
+    ? `Você entrou em ${nomeMes(folha.mes)}: esta é a sua primeira folha. Você recebe a bolsa e o auxílio-transporte proporcionais aos dias a partir da sua entrada, sem descontos de mês anterior.`
     : "";
   $("t-ausencias-texto").textContent = ehEntrada ? "Ausências" : `Ausências de ${nomeAnt}/${ant.ano}`;
 
@@ -261,7 +261,7 @@ function atualizarRotulos(folha: AnoMes, ctx: ContextoFolha | null) {
   $("ant-nao-presenciais-rotulo").textContent =
     `Quantos dias úteis de ${nomeAnt.toUpperCase()} você não foi presencialmente ao Senado? ${complemento}`;
   $("ant-nao-presenciais-ajuda").textContent = ctx?.mesAnteriorEhEntrada
-    ? "Conte só os dias a partir da sua data de entrada. Os dias anteriores já foram descontados na sua primeira folha."
+    ? "Conte só os dias a partir da sua data de entrada. Os dias anteriores à entrada não entraram na sua primeira folha."
     : "Conte faltas, atestados, recesso e trabalho remoto autorizado: o auxílio-transporte só é devido em dia presencial.";
   definirAtributo(campos.antNaoPres, "max", ctx?.maxNaoPresenciaisMesAnterior != null ? String(ctx.maxNaoPresenciaisMesAnterior) : null);
 
@@ -287,7 +287,7 @@ function linhaTotal(rotulo: string, centavos: number, classe: string) {
 
 function renderizarExtrato(r: Extract<ResultadoSimulacao, { ok: true }>, folha: AnoMes) {
   const tabela = el("table", { class: "extrato" }, el("caption", {}, `Extrato estimado da folha de ${formatarAnoMes(folha)}`));
-  const ordem: GrupoExtrato[] = ["mes-da-folha", "entrada", "mes-anterior", "mes-atual", "recesso"];
+  const ordem: GrupoExtrato[] = ["mes-da-folha", "mes-anterior", "mes-atual", "recesso"];
   for (const grupo of ordem) {
     const linhas = r.linhas.filter((l) => l.grupo === grupo);
     const mostrarVazio = (grupo === "mes-anterior" && !r.contexto.ehMesDeEntrada) || (grupo === "mes-atual" && modo() === "desligamento");
@@ -317,7 +317,8 @@ function renderizarExtrato(r: Extract<ResultadoSimulacao, { ok: true }>, folha: 
       "tfoot",
       {},
       linhaTotal("Total de créditos", r.creditosCentavos, "extrato__total"),
-      linhaTotal("Total de descontos", r.descontosCentavos, "extrato__total"),
+      // Na 1ª folha não há descontos: não mostrar a linha zerada
+      ...(r.contexto.ehMesDeEntrada && r.descontosCentavos === 0 ? [] : [linhaTotal("Total de descontos", r.descontosCentavos, "extrato__total")]),
       linhaTotal("Valor líquido estimado", r.liquidoCentavos, "extrato__liquido"),
     ),
   );

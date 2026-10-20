@@ -30,14 +30,25 @@ describe("seção 9 — testes obrigatórios", () => {
     expect(dias).toEqual([21, 17, 22, 18, 20, 19, 23, 21, 21, 20, 19, 20]);
   });
 
-  it("2. folha set/2026, entrada 15/09/2026", () => {
+  it("2. folha set/2026, entrada 15/09/2026: 1ª folha proporcional, sem descontos", () => {
     const r = ok(simularFolha(comum("2026-09-15", 2026, 9), parametros2026()));
-    expect(totalGrupo(r, "entrada", "desconto", "bolsa")).toBe(76511);
-    const at = r.linhas.find((l) => l.grupo === "entrada" && l.descricao.includes("auxílio"))!;
-    expect(at.centavos).toBe(12150);
-    expect(at.conta).toBe("9 dias úteis × R$ 13,50");
+    // Equivale a bolsa − 765,11 e AT − 121,50 (9 dias úteis antes da entrada) da regra 4.3
+    const [bolsa, at] = r.linhas;
+    expect(bolsa!.descricao).toBe("Bolsa de estágio proporcional (de 15/09 a 30/09)");
+    expect(bolsa!.conta).toBe("16 dias × (R$ 1.639,53 ÷ 30)");
+    expect(bolsa!.centavos).toBe(163953 - 76511);
+    expect(at!.conta).toBe("12 dias úteis × R$ 13,50");
+    expect(at!.centavos).toBe(28350 - 12150);
+    expect(r.descontosCentavos).toBe(0);
+    expect(r.linhas.every((l) => l.natureza === "credito")).toBe(true);
     expect(r.liquidoCentavos).toBe(103642);
     expect(r.contexto.ehMesDeEntrada).toBe(true);
+  });
+
+  it("2b. entrada 20/09/2026 (domingo): 11 dias de bolsa e 8 dias úteis de AT", () => {
+    const r = ok(simularFolha(comum("2026-09-20", 2026, 9), parametros2026()));
+    expect(r.linhas.map((l) => l.conta)).toEqual(["11 dias × (R$ 1.639,53 ÷ 30)", "8 dias úteis × R$ 13,50"]);
+    expect(r.liquidoCentavos).toBe(60116 + 10800);
   });
 
   it("3. folha set/2026, entrada antiga, agosto sem ausências", () => {
@@ -62,9 +73,9 @@ describe("seção 9 — testes obrigatórios", () => {
     expect(r.liquidoCentavos).toBe(171858);
   });
 
-  it("6. entrada no dia 1º do mês: nenhum desconto de entrante", () => {
+  it("6. entrada no dia 1º do mês: bolsa e AT integrais", () => {
     const r = ok(simularFolha(comum("2026-09-01", 2026, 9), parametros2026()));
-    expect(r.linhas.filter((l) => l.grupo === "entrada")).toEqual([]);
+    expect(r.linhas.map((l) => l.descricao)).toEqual(["Bolsa de estágio", "Auxílio-transporte de setembro"]);
     expect(r.liquidoCentavos).toBe(192303);
   });
 

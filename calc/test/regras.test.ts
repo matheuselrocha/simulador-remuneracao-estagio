@@ -142,6 +142,13 @@ describe("desligamento e recesso (4.5 e 4.6.1–4.6.3)", () => {
     expect(r.ok && r.linhas.filter((l) => l.grupo === "recesso").length).toBe(1);
   });
 
+  it("entrada e desligamento no mesmo mês: proporcional entre as duas datas", () => {
+    // 15/09 a 18/09/2026: 4 dias de bolsa; dias úteis 15, 16, 17, 18 = 4
+    const r = simularFolha(deslig("2026-09-15", "2026-09-18"), parametros2026());
+    if (!r.ok) throw new Error(JSON.stringify(r.erros));
+    expect(r.linhas.filter((l) => l.grupo === "mes-da-folha").map((l) => l.conta)).toEqual(["4 dias × (R$ 1.639,53 ÷ 30)", "4 dias úteis × R$ 13,50"]);
+  });
+
   it("desligamento no meio do mês: bolsa por dias corridos e AT por dias úteis até a saída", () => {
     // saída 18/09/2026 (sexta): 18 dias corridos; dias úteis 01–18/09 = 13 (07/09 feriado)
     const r = simularFolha(deslig("2025-03-01", "2026-09-18"), parametros2026());
