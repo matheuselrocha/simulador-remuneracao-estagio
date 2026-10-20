@@ -57,7 +57,8 @@
               <p class="campo__erro" id="folha-erro" hidden></p>
             </div>
 
-            <fieldset class="campo alternancia">
+            <!-- Modo desligamento desativado até validação do SGEST (chave em src/simulador/main.ts) -->
+            <fieldset class="campo alternancia" data-recurso="desligamento" hidden>
               <legend>Tipo de folha</legend>
               <div class="alternancia__opcoes">
                 <input type="radio" name="modo" id="modo-comum" value="comum" checked />
@@ -170,19 +171,21 @@
             <li>No <strong>segundo mês</strong>, informe só as ausências a partir da sua data de entrada. Os dias anteriores à entrada não entraram na sua primeira folha.</li>
           </ul>
 
+          <div data-recurso="desligamento" hidden>
           <h3>Último mês (desligamento)</h3>
           <ul>
             <li>São descontadas as ausências do mês anterior e também as do próprio mês do desligamento.</li>
             <li><strong>Recesso indenizado</strong> (só bolsa, sem AT): 30 dias para quem completou 2 anos; para quem sai antes, 2,5 dias por mês completo no período em aberto. Cada dia de recesso vale a bolsa ÷ 30, ou seja, 30 dias equivalem a uma bolsa cheia.</li>
             <li>O contrato termina, no máximo, na véspera do dia em que você completa 2 anos de estágio.</li>
           </ul>
+          </div>
 
           <h3>Regras a confirmar com o SGEST</h3>
           <p>Nestes pontos o simulador usa uma regra provisória e avisa quando ela afeta o resultado:</p>
           <ul>
-            <li>Fração de mês no recesso proporcional (hoje: conta só meses completos).</li>
-            <li>Recesso do 1º ano não gozado por quem sai entre 12 e 24 meses (hoje: soma 30 dias se marcado).</li>
-            <li>Desligamento no meio do mês (hoje: bolsa pelos dias corridos até a saída, cada dia = bolsa ÷ dias do mês, e AT por dias úteis até a saída).</li>
+            <li data-recurso="desligamento" hidden>Fração de mês no recesso proporcional (hoje: conta só meses completos).</li>
+            <li data-recurso="desligamento" hidden>Recesso do 1º ano não gozado por quem sai entre 12 e 24 meses (hoje: soma 30 dias se marcado).</li>
+            <li data-recurso="desligamento" hidden>Desligamento no meio do mês (hoje: bolsa pelos dias corridos até a saída, cada dia = bolsa ÷ dias do mês, e AT por dias úteis até a saída).</li>
             <li>Desconto do mês anterior após reajuste (hoje: usa o valor vigente no mês anterior).</li>
             <li>Se irregularidade de ponto e atestado sem abono descontam a bolsa (hoje: sim, como falta injustificada).</li>
           </ul>

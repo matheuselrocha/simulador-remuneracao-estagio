@@ -216,6 +216,8 @@ A partir de outubro o painel avisa se o ano seguinte não está publicado.
 
 ## Pontos em aberto (regras a confirmar)
 
+> **Modo "Último mês (desligamento)" desativado no site** desde 20/10/2026, até o SGEST validar as regras de desligamento e recesso (pontos 1 a 3 abaixo). O código continua no motor e nos testes. Para reativar, mude `RECURSOS.desligamento` para `true` em `web/src/simulador/main.ts`.
+
 O motor implementa uma regra provisória para cada ponto abaixo, parametrizada em `calc/src/parametros.ts` (`RegrasProvisorias`), e o simulador mostra "Regra a confirmar com o SGEST" quando o ponto afeta o resultado.
 
 | # | Ponto | Regra provisória | Alternativa já implementada |
