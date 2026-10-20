@@ -29,7 +29,7 @@ export function montarParametros(valores: LinhaValor[], anos: LinhaAno[], datas:
   return {
     bolsa: valores
       .filter((v) => v.tipo === "bolsa")
-      .map((v) => ({ inicio: v.vigencia_inicio, centavos: v.valor_centavos, divisor: v.divisor ?? 30 })),
+      .map((v) => ({ inicio: v.vigencia_inicio, centavos: v.valor_centavos })),
     at: valores.filter((v) => v.tipo === "at").map((v) => ({ inicio: v.vigencia_inicio, centavos: v.valor_centavos })),
     calendario: {
       anos: [...publicados].sort(),

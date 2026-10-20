@@ -10,6 +10,7 @@ import {
   compararMeses,
   contidaNoMes,
   dataFinalContrato,
+  diasNoMes,
   ehDataISO,
   mesAnterior as mesAnteriorDe,
   mesesCompletos,
@@ -152,7 +153,9 @@ export const TITULOS_GRUPOS: Record<GrupoExtrato, string> = {
 
 // ───────────────────────────── Implementação ─────────────────────────────
 
-const contaBolsaDiaria = (b: ValorBolsa) => `(${formatarMoeda(b.centavos)} ÷ ${b.divisor})`;
+/** Bolsa diária = bolsa mensal ÷ número de dias do mês a que o dia se refere (28, 29, 30 ou 31). */
+const contaBolsaDiaria = (b: ValorBolsa, mes: AnoMes) => `(${formatarMoeda(b.centavos)} ÷ ${diasNoMes(mes.ano, mes.mes)})`;
+const valorDiasDeBolsa = (dias: number, b: ValorBolsa, mes: AnoMes) => multiplicarArredondado(dias, b.centavos, diasNoMes(mes.ano, mes.mes));
 
 function diasCorridos(n: number) {
   return formatarDias(n);
@@ -218,8 +221,8 @@ function linhasAusencias(
       grupo,
       natureza: "desconto",
       descricao: `Faltas injustificadas em ${nome} (bolsa)`,
-      conta: `${diasCorridos(a.faltasInjustificadas)} × ${contaBolsaDiaria(bolsa)}`,
-      centavos: multiplicarArredondado(a.faltasInjustificadas, bolsa.centavos, bolsa.divisor),
+      conta: `${diasCorridos(a.faltasInjustificadas)} × ${contaBolsaDiaria(bolsa, mes)}`,
+      centavos: valorDiasDeBolsa(a.faltasInjustificadas, bolsa, mes),
     });
   }
   if (a.diasNaoPresenciais > 0) {
@@ -392,8 +395,7 @@ export function simularFolha(
   // Créditos do mês. Mês cheio: bolsa integral + AT de todos os dias úteis.
   // 1ª folha (regra 4.3) e/ou desligamento no meio do mês (4.6.3): bolsa e AT
   // proporcionais ao período de vínculo no mês — sem linhas de desconto.
-  // Bolsa proporcional em mês comercial de 30 dias: paga min(dia final, 30) − (dia inicial − 1)
-  // dias × bolsa ÷ 30 — o mesmo valor de "bolsa − (dia de entrada − 1) × bolsa ÷ 30" da regra 4.3.
+  // Bolsa proporcional: dias corridos do período × (bolsa ÷ dias do mês).
   const inicioCredito = ehMesDeEntrada ? dataEntrada : primeiroDia(folha);
   if (inicioCredito === primeiroDia(folha) && fimCredito === ultimoDia(folha)) {
     linhas.push({
@@ -413,14 +415,14 @@ export function simularFolha(
   } else {
     const diaInicio = partes(inicioCredito).dia;
     const diaFim = partes(fimCredito).dia;
-    const diasBolsa = Math.max(0, Math.min(diaFim, bolsaM.divisor) - (diaInicio - 1));
+    const diasBolsa = Math.max(0, diaFim - diaInicio + 1);
     const periodo = `de ${formatarData(inicioCredito).slice(0, 5)} a ${formatarData(fimCredito).slice(0, 5)}`;
     linhas.push({
       grupo: "mes-da-folha",
       natureza: "credito",
       descricao: `Bolsa de estágio proporcional (${periodo})`,
-      conta: `${diasCorridos(diasBolsa)} × ${contaBolsaDiaria(bolsaM)}`,
-      centavos: multiplicarArredondado(diasBolsa, bolsaM.centavos, bolsaM.divisor),
+      conta: `${diasCorridos(diasBolsa)} × ${contaBolsaDiaria(bolsaM, folha)}`,
+      centavos: valorDiasDeBolsa(diasBolsa, bolsaM, folha),
     });
     const du = cal.diasUteisEntre(inicioCredito, fimCredito);
     linhas.push({
@@ -435,7 +437,7 @@ export function simularFolha(
         codigo: "regra-desligamento-meio-do-mes",
         regraAConfirmar: true,
         mensagem:
-          "Desligamento antes do fim do mês: a bolsa foi calculada por dias corridos até a saída (÷ 30) e o auxílio-transporte pelos dias úteis até a saída.",
+          "Desligamento antes do fim do mês: a bolsa foi calculada pelos dias corridos até a saída (bolsa ÷ dias do mês) e o auxílio-transporte pelos dias úteis até a saída.",
       });
     }
   }
@@ -554,8 +556,8 @@ function linhasRecesso(
       grupo: "recesso",
       natureza: "credito",
       descricao: `Recesso indenizado (${proporcional})`,
-      conta: `${formatarDias(diasPeriodo)} × ${contaBolsaDiaria(bolsa)}`,
-      centavos: multiplicarArredondado(diasPeriodo, bolsa.centavos, bolsa.divisor),
+      conta: `${formatarDias(diasPeriodo)} × ${contaBolsaDiaria(bolsa, contexto.folha)}`,
+      centavos: valorDiasDeBolsa(diasPeriodo, bolsa, contexto.folha),
     });
   }
   if (r.somouPrimeiroAno) {
@@ -563,8 +565,8 @@ function linhasRecesso(
       grupo: "recesso",
       natureza: "credito",
       descricao: "Recesso do 1º ano não gozado",
-      conta: `30 dias × ${contaBolsaDiaria(bolsa)}`,
-      centavos: multiplicarArredondado(30, bolsa.centavos, bolsa.divisor),
+      conta: `30 dias × ${contaBolsaDiaria(bolsa, contexto.folha)}`,
+      centavos: valorDiasDeBolsa(30, bolsa, contexto.folha),
     });
   }
   return linhas;

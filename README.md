@@ -222,7 +222,7 @@ O motor implementa uma regra provisória para cada ponto abaixo, parametrizada e
 |---|---|---|---|
 | 1 | Fração de mês no recesso proporcional | conta só meses completos | fração ≥ 15 dias conta como mês |
 | 2 | Recesso do 1º ano não gozado por quem sai entre 12 e 24 meses | checkbox "não tirei o recesso do 1º ano" soma +30 dias | ignorar |
-| 3 | Desligamento no meio do mês | bolsa por dias corridos até a saída (÷ 30); AT por dias úteis até a saída | mês integral |
+| 3 | Desligamento no meio do mês | bolsa por dias corridos até a saída (÷ dias do mês); AT por dias úteis até a saída | mês integral |
 | 4 | Desconto do mês anterior após reajuste | usa o valor vigente em M−1 (mês em que foi pago); aplicado a AT **e bolsa** | valor vigente em M |
 | 5 | Irregularidade de ponto e atestado sem abono descontam a bolsa? | sim, contam como falta injustificada (o slide do SGEST só cita o AT) | — (texto de ajuda) |
 
@@ -230,7 +230,7 @@ Outras decisões que vale confirmar:
 - **Feriados de 2026**: a planilha só tinha as datas; descrições e tipos do seed foram inferidos e marcados "a conferir". **29/06/2026** não tem descrição conhecida.
 - **Data final do contrato** de quem entra em 29/02: entrada + 2 anos − 1 dia = 28/02.
 - Um novo valor não pode ter vigência anterior ao mês atual (não reescreve folhas passadas).
-- **1ª folha proporcional:** a bolsa é paga por `min(dia final, 30) − (dia de entrada − 1)` dias × bolsa ÷ 30 (mês comercial de 30 dias, mesmo valor da regra 4.3). Em meses de 31 dias isso dá 1 dia a menos que os dias corridos (entrada em 20/10 → 11 dias), e em fevereiro dá mais (entrada em 20/02 → 11 dias). O AT usa os dias úteis reais a partir da entrada.
+- **Bolsa diária = bolsa mensal ÷ número de dias do mês** (28 a 31), por decisão do SGEST em 20/10/2026, no lugar do divisor fixo 30 da especificação original. Vale para a 1ª folha proporcional (dias corridos desde a entrada), faltas injustificadas (dias do mês da falta), desligamento no meio do mês e recesso indenizado (dias do mês do desligamento). A coluna `valores.divisor` do banco ficou como legado e não é usada. Consequência a confirmar: 30 dias de recesso num mês de 31 dias valem menos que uma bolsa cheia (R$ 1.586,64 em vez de R$ 1.639,53).
 
 ## Modelo de dados e privacidade
 
@@ -247,7 +247,7 @@ O banco guarda **apenas** estas 5 tabelas (verificado em teste):
 - Nenhum dado de estagiário: o simulador só faz **GET** dos parâmetros publicados; sem cookies, sem storage, sem analytics.
 - RLS em todas as tabelas. `anon` só lê `valores` e anos **publicados**; escrita só para `auth.uid()` presente em `admins`.
 - Auditoria gerada por **trigger** no Postgres; `UPDATE`/`DELETE`/`TRUNCATE` bloqueados até para o dono do banco. Exclusões passam pela função `excluir_registro(tabela, id, responsavel)`, que leva "Seu nome" ao log.
-- Cálculo em centavos inteiros, arredondamento half-up por linha (3 × 1.639,53 ÷ 30 = 163,953 → R$ 163,95).
+- Cálculo em centavos inteiros, arredondamento half-up por linha (3 × 1.639,53 ÷ 31 = 158,664 → R$ 158,66).
 
 ## Fontes e marca
 

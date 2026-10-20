@@ -15,7 +15,7 @@ export const DATAS_2026 = [
 
 export function parametros2026(extra: Partial<Parametros> = {}): Parametros {
   return {
-    bolsa: [{ inicio: "2026-01-01", centavos: 163953, divisor: 30 }],
+    bolsa: [{ inicio: "2026-01-01", centavos: 163953 }],
     at: [{ inicio: "2026-01-01", centavos: 1350 }],
     calendario: { anos: [2026], datasNaoUteis: DATAS_2026 },
     ...extra,
