@@ -83,11 +83,11 @@ function lerDias(input: HTMLInputElement): number {
 
 /**
  * Recursos que podem ser ligados/desligados sem apagar código.
- * desligamento: modo "Último mês (desligamento)" — DESATIVADO até validação das
- * regras pelo SGEST (recesso proporcional, desligamento no meio do mês etc.).
- * Para reativar: true aqui (o HTML marcado com data-recurso="desligamento" volta a aparecer).
+ * desligamento: modo "Último mês (desligamento)" — ativo desde 23/10/2026, com a
+ * observação de simulação aproximada no resultado. Para desativar: false aqui
+ * (o HTML marcado com data-recurso="desligamento" some).
  */
-const RECURSOS = { desligamento: false } as const;
+const RECURSOS = { desligamento: true } as const;
 
 function aplicarRecursos() {
   document.querySelectorAll<HTMLElement>("[data-recurso=desligamento]").forEach((n) => (n.hidden = !RECURSOS.desligamento));
@@ -506,7 +506,10 @@ function atualizar() {
   definirResumo(
     `<p class="destaque__rotulo">Valor líquido estimado · folha de ${formatarAnoMes(folha)}</p>` +
       `<p class="destaque__valor">${formatarMoeda(r.liquidoCentavos)}</p>` +
-      `<p class="destaque__deposito">${deposito}</p>`,
+      `<p class="destaque__deposito">${deposito}</p>` +
+      (modo() === "desligamento"
+        ? `<p class="destaque__observacao"><strong>Simulação aproximada.</strong> No desligamento, o valor pode não corresponder exatamente à folha efetiva em casos específicos.</p>`
+        : ""),
   );
   extrato.replaceChildren(
     ...[renderizarAvisos(r.avisos), renderizarExtrato(r, folha), valoresUsados, resumoDadosInformados(entrada, ctx)].filter(
