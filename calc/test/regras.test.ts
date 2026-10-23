@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   REGRAS_PADRAO,
-  calcularDiasRecesso,
+  calcularFeriasEmPecunia,
   dataFinalContrato,
   formatarData,
   formatarMoeda,
@@ -112,64 +112,97 @@ describe("regra provisória 4.6.4 — reajuste do AT entre M−1 e M", () => {
   });
 });
 
-describe("desligamento e recesso (4.5 e 4.6.1–4.6.3)", () => {
-  const deslig = (dataEntrada: string, dataSaida: string, naoGozou = false, mes = 9): EntradaSimulacao => ({
+describe("desligamento e férias (regras confirmadas em 23/10/2026)", () => {
+  type Primeiras = NonNullable<NonNullable<EntradaSimulacao["desligamento"]>["primeirasFerias"]>;
+  const deslig = (dataEntrada: string, dataSaida: string, primeirasFerias?: Primeiras, mes = 9): EntradaSimulacao => ({
     dataEntrada,
     folha: { ano: 2026, mes },
     modo: "desligamento",
     mesAnterior: SEM_AUSENCIAS,
-    desligamento: { dataSaida, mesAtual: SEM_AUSENCIAS, naoGozouRecessoPrimeiroAno: naoGozou },
+    desligamento: { dataSaida, mesAtual: SEM_AUSENCIAS, primeirasFerias },
+  });
+  const ok = (r: ReturnType<typeof simularFolha>) => {
+    if (!r.ok) throw new Error(JSON.stringify(r.erros));
+    return r;
+  };
+  const ferias = (r: ReturnType<typeof ok>) => r.linhas.filter((l) => l.grupo === "ferias").map((l) => [l.descricao, l.conta, l.centavos]);
+
+  it("exemplo do SGEST: entrou 01/01/2025, férias desde 01/07/2026, saiu no 15º dia (15/07/2026)", () => {
+    const r = ok(simularFolha(deslig("2025-01-01", "2026-07-15", { situacao: "em-andamento", inicio: "2026-07-01" }, 7), parametros2026()));
+    const [bolsa, at] = r.linhas.filter((l) => l.grupo === "mes-da-folha");
+    expect([bolsa!.conta, bolsa!.centavos]).toEqual(["15 dias × (R$ 1.639,53 ÷ 31)", 79332]); // 793,32
+    expect([at!.conta, at!.centavos]).toEqual(["não devido: 11 dias úteis de férias", 0]);
+    expect(ferias(r)).toEqual([
+      ["Primeiras férias: dias não usufruídos (usufruiu 15 de 30)", "15 dias × (R$ 1.639,53 ÷ 30)", 81977], // 819,77
+      ["Segundas férias proporcionais (6 meses completos × 2,5 dias)", "15 dias × (R$ 1.639,53 ÷ 30)", 81977],
+    ]);
+    expect(r.liquidoCentavos).toBe(243286); // R$ 2.432,86
+    expect(r.avisos.map((a) => a.codigo)).toContain("regra-fracao-mes-recesso"); // 6 meses + 15 dias
+    expect(r.contexto.maxNaoPresenciaisMesAtual).toBe(0);
   });
 
-  it("recesso usa bolsa ÷ 30 mesmo em mês de 31 dias: 2 anos completos = uma bolsa cheia", () => {
-    const r = simularFolha(deslig("2024-11-01", "2026-10-31", false, 10), parametros2026());
-    if (!r.ok) throw new Error(JSON.stringify(r.erros));
-    const recesso = r.linhas.filter((l) => l.grupo === "recesso");
-    expect(recesso.map((l) => [l.conta, l.centavos])).toEqual([["30 dias × (R$ 1.639,53 ÷ 30)", 163953]]);
-    // já a bolsa do mês e as faltas seguem os dias do mês (outubro: ÷ 31)
+  it("férias começadas no mês anterior: AT dos dias de férias de junho é descontado na última folha", () => {
+    // férias 20/06 a 10/07/2026 (21 dias); junho: dias úteis 22–26 e 30 (29/06 não é útil) = 6
+    const r = ok(simularFolha(deslig("2025-01-01", "2026-07-10", { situacao: "em-andamento", inicio: "2026-06-20" }, 7), parametros2026()));
+    expect(r.contexto.diasUteisFeriasMesAnterior).toBe(6);
+    expect(r.linhas.find((l) => l.grupo === "mes-anterior")!).toMatchObject({ conta: "6 dias úteis × R$ 13,50", centavos: 8100 });
+    expect(r.linhas.find((l) => l.descricao.startsWith("Auxílio"))!.conta).toBe("não devido: 8 dias úteis de férias");
+    expect(ferias(r)[0]).toEqual(["Primeiras férias: dias não usufruídos (usufruiu 21 de 30)", "9 dias × (R$ 1.639,53 ÷ 30)", 49186]);
   });
 
-  it("recesso proporcional em mês de 31 dias também usa ÷ 30", () => {
-    // entrada 01/03/2026, saída 31/10/2026: 8 meses completos → 20 dias
-    const r = simularFolha(deslig("2026-03-01", "2026-10-31", false, 10), parametros2026());
-    if (!r.ok) throw new Error(JSON.stringify(r.erros));
-    const recesso = r.linhas.find((l) => l.grupo === "recesso")!;
-    expect(recesso.conta).toBe("20 dias × (R$ 1.639,53 ÷ 30)");
-    expect(recesso.centavos).toBe(multiplicarArredondado(20, 163953, 30));
+  it("saída no 1º e no 30º dia de férias; 31º dia é erro", () => {
+    const primeiro = ok(simularFolha(deslig("2025-01-01", "2026-07-01", { situacao: "em-andamento", inicio: "2026-07-01" }, 7), parametros2026()));
+    expect(ferias(primeiro)[0]![1]).toBe("29 dias × (R$ 1.639,53 ÷ 30)");
+    const ultimo = ok(simularFolha(deslig("2025-01-01", "2026-07-30", { situacao: "em-andamento", inicio: "2026-07-01" }, 7), parametros2026()));
+    expect(ferias(ultimo).some((f) => String(f[0]).startsWith("Primeiras"))).toBe(false);
+    const depois = simularFolha(deslig("2025-01-01", "2026-07-31", { situacao: "em-andamento", inicio: "2026-07-01" }, 7), parametros2026());
+    expect(!depois.ok && depois.erros[0]!.codigo).toBe("ferias-invalidas");
+  });
+
+  it("férias não podem começar antes de completar 1 ano; situação é obrigatória após 1 ano", () => {
+    const cedo = simularFolha(deslig("2025-09-10", "2026-09-20", { situacao: "em-andamento", inicio: "2026-09-05" }), parametros2026());
+    expect(!cedo.ok && cedo.erros[0]!.codigo).toBe("ferias-invalidas");
+    const sem = simularFolha(deslig("2025-03-01", "2026-09-18"), parametros2026());
+    expect(!sem.ok && sem.erros[0]!.campo).toBe("desligamento.primeirasFerias.situacao");
+    expect(sem.contexto!.opcoesPrimeirasFerias).toEqual(["tirou", "nao-tirou", "em-andamento"]);
+  });
+
+  it("saída exatamente ao completar 12 meses: 30 dias em pecúnia, sem pergunta", () => {
+    const r = ok(simularFolha(deslig("2025-09-01", "2026-08-31", undefined, 8), parametros2026()));
+    expect(r.contexto.opcoesPrimeirasFerias).toEqual([]);
+    expect(ferias(r)).toEqual([["Primeiras férias não usufruídas", "30 dias × (R$ 1.639,53 ÷ 30)", 163953]]);
   });
 
   it("menos de 1 ano: 2,5 dias por mês completo, fração ignorada com aviso", () => {
-    // 01/03/2026 a 20/09/2026: 6 meses completos + fração
-    const d = calcularDiasRecesso("2026-03-01", "2026-09-20", false);
-    expect(d).toMatchObject({ dias: 15, mesesNoPeriodo: 6, fracaoIgnorada: true });
-    const alt = calcularDiasRecesso("2026-03-01", "2026-09-20", false, { ...REGRAS_PADRAO, fracaoMesRecesso: "fracao-15-dias-conta-mes" });
-    expect(alt.dias).toBe(17.5);
+    expect(calcularFeriasEmPecunia("2026-03-01", "2026-09-20", undefined).proporcional).toMatchObject({ dias: 15, meses: 6, periodo: "primeiro", fracaoIgnorada: true });
+    const alt = calcularFeriasEmPecunia("2026-03-01", "2026-09-20", undefined, { ...REGRAS_PADRAO, fracaoMesRecesso: "fracao-15-dias-conta-mes" });
+    expect(alt.proporcional!.dias).toBe(17.5);
+    expect(calcularFeriasEmPecunia("2026-03-01", "2026-09-20", undefined).primeiras).toBeNull();
   });
 
-  it("entre 12 e 24 meses: só o período aquisitivo em aberto; checkbox soma 30", () => {
+  it("entre 12 e 24 meses: primeiras em pecúnia se não tirou + segundas proporcionais", () => {
     // entrada 01/03/2025, saída 31/08/2026: 2º período de 01/03/2026 a 31/08/2026 = 6 meses
-    expect(calcularDiasRecesso("2025-03-01", "2026-08-31", false)).toMatchObject({ dias: 15, fracaoIgnorada: false });
-    expect(calcularDiasRecesso("2025-03-01", "2026-08-31", true)).toMatchObject({ dias: 45, somouPrimeiroAno: true });
+    expect(calcularFeriasEmPecunia("2025-03-01", "2026-08-31", { situacao: "nao-tirou" })).toMatchObject({
+      primeiras: { dias: 30, usufruidos: 0 },
+      proporcional: { dias: 15, meses: 6, periodo: "segundo", fracaoIgnorada: false },
+    });
+    expect(calcularFeriasEmPecunia("2025-03-01", "2026-08-31", { situacao: "tirou" }).primeiras).toBeNull();
   });
 
-  it("checkbox ignorado com menos de 12 meses", () => {
-    expect(calcularDiasRecesso("2026-03-01", "2026-08-31", true).dias).toBe(15);
-    const r = simularFolha(deslig("2026-03-01", "2026-09-30", true), parametros2026());
-    expect(r.contexto!.podeInformarRecessoPrimeiroAno).toBe(false);
-    expect(r.ok && r.linhas.filter((l) => l.grupo === "recesso").length).toBe(1);
+  it("2 anos em mês de 31 dias, sem ter tirado as primeiras: 30 dias × (bolsa ÷ 30) = uma bolsa cheia", () => {
+    const r = ok(simularFolha(deslig("2024-11-01", "2026-10-31", { situacao: "nao-tirou" }, 10), parametros2026()));
+    expect(ferias(r)).toEqual([["Primeiras férias não usufruídas (usufruiu só as últimas)", "30 dias × (R$ 1.639,53 ÷ 30)", 163953]]);
   });
 
   it("entrada e desligamento no mesmo mês: proporcional entre as duas datas", () => {
     // 15/09 a 18/09/2026: 4 dias de bolsa; dias úteis 15, 16, 17, 18 = 4
-    const r = simularFolha(deslig("2026-09-15", "2026-09-18"), parametros2026());
-    if (!r.ok) throw new Error(JSON.stringify(r.erros));
+    const r = ok(simularFolha(deslig("2026-09-15", "2026-09-18"), parametros2026()));
     expect(r.linhas.filter((l) => l.grupo === "mes-da-folha").map((l) => l.conta)).toEqual(["4 dias × (R$ 1.639,53 ÷ 30)", "4 dias úteis × R$ 13,50"]);
   });
 
   it("desligamento no meio do mês: bolsa por dias corridos e AT por dias úteis até a saída", () => {
     // saída 18/09/2026 (sexta): 18 dias corridos; dias úteis 01–18/09 = 13 (07/09 feriado)
-    const r = simularFolha(deslig("2025-03-01", "2026-09-18"), parametros2026());
-    if (!r.ok) throw new Error(JSON.stringify(r.erros));
+    const r = ok(simularFolha(deslig("2025-03-01", "2026-09-18", { situacao: "tirou" }), parametros2026()));
     const [bolsa, at] = r.linhas.filter((l) => l.grupo === "mes-da-folha");
     expect(bolsa!.centavos).toBe(multiplicarArredondado(18, 163953, 30));
     expect(at!.conta).toBe("13 dias úteis × R$ 13,50");
@@ -185,7 +218,7 @@ describe("desligamento e recesso (4.5 e 4.6.1–4.6.3)", () => {
   });
 
   it("ausências do mês atual respeitam o limite até a saída", () => {
-    const e = deslig("2025-03-01", "2026-09-18");
+    const e = deslig("2025-03-01", "2026-09-18", { situacao: "tirou" });
     e.desligamento!.mesAtual = { diasNaoPresenciais: 14, faltasInjustificadas: 0 };
     const r = simularFolha(e, parametros2026());
     expect(!r.ok && r.erros[0]!.campo).toBe("desligamento.mesAtual.diasNaoPresenciais");

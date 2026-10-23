@@ -424,3 +424,30 @@ select[aria-invalid="true"] {
     gap: 4px;
   }
 }
+
+/* Opções em lista (ex.: "Suas primeiras férias") */
+.opcoes-radio {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.opcoes-radio label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-pequeno);
+  cursor: pointer;
+}
+.opcoes-radio label:has(input:checked) {
+  border-color: var(--sf-azul-ceu);
+  background: var(--cor-superficie-suave);
+}
+.opcoes-radio input {
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  flex: none;
+}

@@ -120,29 +120,37 @@ describe("seção 9 — testes obrigatórios", () => {
     expect(cal2026.dataDeposito({ ano: 2026, mes: 10 })).toBe("2026-11-09");
   });
 
-  it("10. desligamento com 2 anos completos, folha set/2026", () => {
-    const r = ok(
-      simularFolha(
-        {
-          dataEntrada: "2024-10-01",
-          folha: { ano: 2026, mes: 9 },
-          modo: "desligamento",
-          mesAnterior: { diasNaoPresenciais: 2, faltasInjustificadas: 0 },
-          desligamento: {
-            dataSaida: "2026-09-30",
-            mesAtual: { diasNaoPresenciais: 1, faltasInjustificadas: 1 },
-            naoGozouRecessoPrimeiroAno: false,
-          },
-        },
-        parametros2026(),
-      ),
-    );
-    expect(totalGrupo(r, "mes-da-folha", "credito", "")).toBe(163953 + 28350);
-    expect(totalGrupo(r, "mes-anterior", "desconto", "")).toBe(2700);
-    expect(totalGrupo(r, "mes-atual", "desconto", "")).toBe(6815);
-    expect(totalGrupo(r, "recesso", "credito", "")).toBe(163953);
-    expect(r.liquidoCentavos).toBe(346741);
-    expect(r.avisos.filter((a) => a.regraAConfirmar)).toEqual([]);
+  it("10. desligamento com 2 anos completos, folha set/2026 (regras de férias de 23/10/2026)", () => {
+    // A especificação original somava 30 dias de recesso indenizado (líquido 3.467,41).
+    // Regra confirmada: quem completa 2 anos usufrui as últimas férias nos 30 dias finais
+    // (01/09 a 30/09/2026): bolsa normal, sem AT nesses dias, nada em pecúnia.
+    const entrada = (situacao: "tirou" | "nao-tirou" | "junto-com-ultimas", agosto = 2) => ({
+      dataEntrada: "2024-10-01",
+      folha: { ano: 2026, mes: 9 },
+      modo: "desligamento" as const,
+      mesAnterior: { diasNaoPresenciais: agosto, faltasInjustificadas: 0 },
+      desligamento: { dataSaida: "2026-09-30", mesAtual: { diasNaoPresenciais: 0, faltasInjustificadas: 0 }, primeirasFerias: { situacao } },
+    });
+    const tirou = ok(simularFolha(entrada("tirou"), parametros2026()));
+    expect(tirou.contexto.opcoesPrimeirasFerias).toEqual(["tirou", "nao-tirou", "junto-com-ultimas"]);
+    expect(tirou.contexto.periodosFerias).toEqual([{ inicio: "2026-09-01", fim: "2026-09-30", descricao: "últimas férias" }]);
+    expect(tirou.linhas.find((l) => l.descricao.startsWith("Auxílio-transporte"))!.conta).toBe("não devido: 21 dias úteis de férias");
+    expect(totalGrupo(tirou, "ferias", "credito", "")).toBe(0);
+    expect(tirou.liquidoCentavos).toBe(163953 - 2700);
+    expect(tirou.avisos.map((a) => a.codigo)).toContain("info-ultimas-ferias");
+    expect(tirou.contexto.maxNaoPresenciaisMesAtual).toBe(0);
+
+    const naoTirou = ok(simularFolha(entrada("nao-tirou"), parametros2026()));
+    expect(naoTirou.linhas.filter((l) => l.grupo === "ferias").map((l) => [l.descricao, l.centavos])).toEqual([
+      ["Primeiras férias não usufruídas (usufruiu só as últimas)", 163953],
+    ]);
+
+    // Primeiras + últimas seguidas: 02/08 a 30/09. AT de agosto pago adiantado é descontado.
+    const junto = ok(simularFolha(entrada("junto-com-ultimas", 0), parametros2026()));
+    expect(junto.contexto.diasUteisFeriasMesAnterior).toBe(21);
+    expect(junto.linhas.find((l) => l.descricao.startsWith("Dias de férias em agosto"))!.centavos).toBe(21 * 1350);
+    expect(junto.liquidoCentavos).toBe(163953 - 21 * 1350);
+    expect(junto.contexto.maxNaoPresenciaisMesAnterior).toBe(0);
   });
 
   it("11. data final: entrada 15/09/2026 → 14/09/2028 (a planilha dava 13/09)", () => {

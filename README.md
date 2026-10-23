@@ -223,8 +223,8 @@ O motor implementa uma regra provisória para cada ponto abaixo, parametrizada e
 
 | # | Ponto | Regra provisória | Alternativa já implementada |
 |---|---|---|---|
-| 1 | Fração de mês no recesso proporcional | conta só meses completos | fração ≥ 15 dias conta como mês |
-| 2 | Recesso do 1º ano não gozado por quem sai entre 12 e 24 meses | checkbox "não tirei o recesso do 1º ano" soma +30 dias | ignorar |
+| 1 | Fração de mês nas férias proporcionais | conta só meses completos | fração ≥ 15 dias conta como mês |
+| 2 | ~~Recesso do 1º ano não gozado~~ | **resolvido**: ver "Desligamento e férias" | — |
 | 3 | Desligamento no meio do mês | bolsa por dias corridos até a saída (÷ dias do mês); AT por dias úteis até a saída | mês integral |
 | 4 | Desconto do mês anterior após reajuste | usa o valor vigente em M−1 (mês em que foi pago); aplicado a AT **e bolsa** | valor vigente em M |
 | 5 | Irregularidade de ponto e atestado sem abono descontam a bolsa? | sim, contam como falta injustificada (o slide do SGEST só cita o AT) | — (texto de ajuda) |
@@ -237,7 +237,7 @@ Outras decisões que vale confirmar:
 
 ## Desligamento e férias: regras confirmadas e pendências
 
-Levantamento feito pelo SGEST para reativar o modo "Último mês (desligamento)". **O motor ainda não implementa estas regras**: hoje ele segue as regras provisórias da seção anterior.
+Levantamento feito pelo SGEST para reativar o modo "Último mês (desligamento)". **As regras abaixo já estão implementadas no motor e testadas** (exemplo do SGEST incluso); o modo continua desativado no site até as pendências do fim desta seção serem respondidas.
 
 ### Confirmadas (SGEST, 23/10/2026)
 
@@ -254,18 +254,32 @@ Levantamento feito pelo SGEST para reativar o modo "Último mês (desligamento)"
 9. **Saída durante as férias:** os dias de férias que faltavam usufruir são **pagos em pecúnia**. Quem está nas últimas férias já está com o desligamento em andamento no sistema; não é um caso à parte (23/10/2026).
 10. **O motivo do desligamento não muda** o direito às férias em pecúnia (23/10/2026).
 
-### Mudanças previstas no motor
+### Como o simulador aplica as regras
 
-| Situação na saída | Hoje (provisório) | Previsto |
-|---|---|---|
-| Exatamente 12 meses | 30 dias só se marcar "não tirei" | 30 dias automaticamente |
-| 2 anos completos, usufruiu as primeiras | +30 dias (1 bolsa) | nada em pecúnia |
-| 2 anos completos, não usufruiu as primeiras | +30 dias | 30 dias (se usufruiu só as segundas) ou nada (se usufruiu as duas) |
-| Últimas férias | estagiário informa os dias não presenciais | dias de férias calculados pela data final do contrato |
-| Data final do contrato | sempre entrada + 2 anos − 1 dia | perguntar se o contrato foi prorrogado: sem prorrogação, entrada + 1 ano − 1 dia (e as primeiras férias vão em pecúnia, regra 3) |
-| Saída durante as primeiras férias | não tratado | dias de férias restantes em pecúnia (bolsa ÷ 30 por dia); AT dos dias de férias descontado |
+- **Pergunta "Suas primeiras férias"** (só para quem sai depois de completar 1 ano):
+  - **Já tirei os 30 dias**: nada em pecúnia pelas primeiras.
+  - **Ainda não tirei**: 30 dias em pecúnia. Para quem completa 2 anos o texto vira "vou tirar só as últimas e receber as primeiras em dinheiro".
+  - **Estou de férias (saí durante as férias)**: pede a data de início; os dias usufruídos até a saída são pagos como bolsa normal e os que faltavam para os 30, em pecúnia.
+  - **Vou tirar junto com as últimas** (só para quem completa 2 anos): as primeiras ocupam os 30 dias antes das últimas; nada em pecúnia.
+- **Saída exatamente ao completar 12 meses:** a pergunta não aparece; 30 dias em pecúnia.
+- **Segundas férias proporcionais** (12 a 24 meses): 2,5 dias por mês completo desde o 1º ano. **Menos de 1 ano:** 2,5 dias por mês completo desde a entrada. **2 anos completos:** nada, as últimas férias são usufruídas.
+- **Dias de férias:** calculados pelo simulador (últimas férias = 30 dias finais do contrato; primeiras em andamento = do início até a saída).
+  - No **mês da saída** não geram auxílio-transporte. O extrato mostra "não devido: N dias úteis de férias", sem crédito e desconto.
+  - No **mês anterior**, o AT já foi pago adiantado e é descontado na última folha.
+  - Os limites dos campos de ausência já excluem esses dias; o estagiário informa só as outras ausências.
+- **Pecúnia:** bolsa ÷ 30 por dia. **Bolsa dos dias do mês:** bolsa ÷ dias do mês.
 
-Nova pergunta ao estagiário, no lugar de "Não tirei o recesso do 1º ano": **"Você tirou as primeiras férias?"** (Sim · Não, vou receber em dinheiro · Vou tirar junto com as últimas — esta só para quem completa 2 anos).
+**Exemplo do SGEST** (teste automático): entrada 01/01/2025, férias desde 01/07/2026, saída no 15º dia (15/07/2026):
+
+| Linha | Valor |
+|---|---|
+| Bolsa de 01/07 a 15/07 (15 dias × bolsa ÷ 31) | R$ 793,32 |
+| Auxílio-transporte (11 dias úteis de férias) | não devido |
+| Primeiras férias não usufruídas (15 dias × bolsa ÷ 30) | R$ 819,77 |
+| Segundas férias proporcionais (6 meses × 2,5 = 15 dias × bolsa ÷ 30) | R$ 819,77 |
+| **Líquido** | **R$ 2.432,86** |
+
+O período de 01/01 a 15/07/2026 tem 6 meses **e 15 dias**. Se a Folha contar a fração como mês, as segundas proporcionais vão a 17,5 dias (R$ 956,39) e o total a R$ 2.569,48.
 
 ### Ainda em aberto (levar ao Serviço de Elaboração da Folha)
 

@@ -8,6 +8,7 @@ import {
   Calendario,
   anoMesDe,
   compararMeses,
+  marcosDoContrato,
   NOMES_MESES,
   TITULOS_GRUPOS,
   formatarAnoMes,
@@ -22,6 +23,8 @@ import {
   vigenteEm,
   type AnoMes,
   type CampoEntrada,
+  type DadosDesligamento,
+  type SituacaoPrimeirasFerias,
   type ContextoFolha,
   type EntradaSimulacao,
   type GrupoExtrato,
@@ -45,7 +48,7 @@ const campos = {
   antFaltas: $<HTMLInputElement>("ant-faltas"),
   atualNaoPres: $<HTMLInputElement>("atual-nao-presenciais"),
   atualFaltas: $<HTMLInputElement>("atual-faltas"),
-  recesso1oAno: $<HTMLInputElement>("recesso-1o-ano"),
+  inicioFerias: $<HTMLInputElement>("inicio-ferias"),
 };
 
 /** Campo do motor → id do input (o erro fica em `${id}-erro`). */
@@ -57,6 +60,8 @@ const INPUT_DO_CAMPO: Record<CampoEntrada, string> = {
   "desligamento.dataSaida": "data-saida",
   "desligamento.mesAtual.diasNaoPresenciais": "atual-nao-presenciais",
   "desligamento.mesAtual.faltasInjustificadas": "atual-faltas",
+  "desligamento.primeirasFerias.situacao": "situacao-ferias",
+  "desligamento.primeirasFerias.inicio": "inicio-ferias",
 };
 
 let parametros: Parametros;
@@ -89,6 +94,17 @@ function aplicarRecursos() {
   if (!RECURSOS.desligamento) campos.modoComum.checked = true;
 }
 
+function situacaoFeriasMarcada(): SituacaoPrimeirasFerias | null {
+  const r = document.querySelector<HTMLInputElement>("input[name=situacao-ferias]:checked");
+  return r ? (r.value as SituacaoPrimeirasFerias) : null;
+}
+
+function lerSituacaoFerias(): DadosDesligamento["primeirasFerias"] {
+  const situacao = situacaoFeriasMarcada();
+  if (!situacao) return undefined;
+  return situacao === "em-andamento" ? { situacao, inicio: campos.inicioFerias.value } : { situacao };
+}
+
 function modo(): "comum" | "desligamento" {
   return RECURSOS.desligamento && campos.modoDeslig.checked ? "desligamento" : "comum";
 }
@@ -104,7 +120,7 @@ function lerEntrada(folha: AnoMes): EntradaSimulacao {
         ? {
             dataSaida: campos.dataSaida.value,
             mesAtual: { diasNaoPresenciais: lerDias(campos.atualNaoPres), faltasInjustificadas: lerDias(campos.atualFaltas) },
-            naoGozouRecessoPrimeiroAno: campos.recesso1oAno.checked,
+            primeirasFerias: lerSituacaoFerias(),
           }
         : undefined,
   };
@@ -242,6 +258,7 @@ function atualizarRotulos(folha: AnoMes, ctx: ContextoFolha | null) {
   const desligamento = modo() === "desligamento";
 
   $("bloco-saida").hidden = !desligamento;
+  $("bloco-ferias").hidden = !desligamento;
   $("bloco-mes-atual").hidden = !desligamento;
   $("data-saida-ajuda").textContent = `Deve estar em ${formatarAnoMes(folha)}.`;
 
@@ -271,11 +288,14 @@ function atualizarRotulos(folha: AnoMes, ctx: ContextoFolha | null) {
   } else {
     complemento = `(o calendário de ${ant.ano} não está cadastrado)`;
   }
+  const feriasAnt = desligamento ? (ctx?.diasUteisFeriasMesAnterior ?? 0) : 0;
   $("ant-nao-presenciais-rotulo").textContent =
-    `Quantos dias úteis de ${nomeAnt.toUpperCase()} você não foi presencialmente ao Senado? ${complemento}`;
+    `Quantos dias úteis de ${nomeAnt.toUpperCase()} você não foi presencialmente ao Senado${feriasAnt > 0 ? ", além das férias" : ""}? ${complemento}`;
   $("ant-nao-presenciais-ajuda").textContent = ctx?.mesAnteriorEhEntrada
     ? "Conte só os dias a partir da sua data de entrada. Os dias anteriores à entrada não entraram na sua primeira folha."
-    : "Conte faltas, atestados, recesso e trabalho remoto autorizado: o auxílio-transporte só é devido em dia presencial.";
+    : feriasAnt > 0
+      ? `Os ${diasUteisTexto(feriasAnt)} de férias de ${nomeAnt} já são descontados pelo simulador. Conte só as outras ausências (faltas, atestados, remoto).`
+      : "Conte faltas, atestados, recesso e trabalho remoto autorizado: o auxílio-transporte só é devido em dia presencial.";
   definirAtributo(campos.antNaoPres, "max", ctx?.maxNaoPresenciaisMesAnterior != null ? String(ctx.maxNaoPresenciaisMesAnterior) : null);
 
   // Mês do desligamento
@@ -283,15 +303,58 @@ function atualizarRotulos(folha: AnoMes, ctx: ContextoFolha | null) {
     const nome = nomeMes(folha.mes);
     $("t-mes-atual").textContent = `Ausências de ${nome}/${folha.ano} (mês do desligamento)`;
     const max = ctx?.maxNaoPresenciaisMesAtual;
+    const feriasAtual = ctx?.diasUteisFeriasMesAtual ?? 0;
     $("atual-nao-presenciais-rotulo").textContent =
-      `Quantos dias úteis de ${nome.toUpperCase()} você não foi presencialmente ao Senado?` +
-      (max != null ? ` (até a saída foram ${diasUteisTexto(max)})` : "");
-    $("atual-nao-presenciais-ajuda").textContent = "Neste mês as ausências são descontadas na própria folha, porque não haverá folha seguinte.";
+      `Quantos dias úteis de ${nome.toUpperCase()} você não foi presencialmente ao Senado${feriasAtual > 0 ? ", além das férias" : ""}?` +
+      (max != null ? ` (até a saída, ${diasUteisTexto(max)} ${feriasAtual > 0 ? "fora das férias" : "no total"})` : "");
+    $("atual-nao-presenciais-ajuda").textContent =
+      (feriasAtual > 0 ? `Os ${diasUteisTexto(feriasAtual)} de férias deste mês não geram auxílio-transporte e já são considerados. ` : "") +
+      "Neste mês as ausências são descontadas na própria folha, porque não haverá folha seguinte.";
     definirAtributo(campos.atualNaoPres, "max", max != null ? String(max) : null);
-    $("bloco-recesso-1o-ano").hidden = !ctx?.podeInformarRecessoPrimeiroAno;
-    $("recesso-info").textContent =
-      "Quem completa 2 anos recebe 30 dias de recesso; quem sai antes recebe 2,5 dias por mês completo do período em aberto. O recesso indenizado é só bolsa, sem auxílio-transporte.";
+    atualizarPerguntaFerias(ctx);
   }
+}
+
+function atualizarPerguntaFerias(ctx: ContextoFolha | null) {
+  const opcoes = ctx?.opcoesPrimeirasFerias ?? [];
+  const entrada = campos.dataEntrada.value;
+  const saida = campos.dataSaida.value;
+  const datasOk = dataCompleta(entrada) && dataCompleta(saida) && saida >= entrada;
+  const marcos = datasOk ? marcosDoContrato(entrada, saida) : null;
+
+  $("situacao-ferias").hidden = opcoes.length === 0;
+  document.querySelectorAll<HTMLElement>("[data-opcao]").forEach((rotulo) => {
+    const valor = rotulo.dataset.opcao as SituacaoPrimeirasFerias;
+    rotulo.hidden = !opcoes.includes(valor);
+    const radio = rotulo.querySelector("input")!;
+    if (rotulo.hidden && radio.checked) radio.checked = false;
+  });
+  $("rotulo-nao-tirou").textContent = marcos?.completouDoisAnos
+    ? "Não tirei: vou tirar só as últimas e receber as primeiras em dinheiro"
+    : "Ainda não tirei (recebo em dinheiro)";
+
+  const emAndamento = situacaoFeriasMarcada() === "em-andamento" && opcoes.includes("em-andamento");
+  $("bloco-inicio-ferias").hidden = !emAndamento;
+  if (marcos) {
+    definirAtributo(campos.inicioFerias, "min", marcos.podeTirarFeriasDesde);
+    definirAtributo(campos.inicioFerias, "max", saida);
+  }
+
+  let info = "";
+  if (marcos && !marcos.completouUmAno) {
+    info = "Com menos de 1 ano de contrato, você recebe férias proporcionais em dinheiro: 2,5 dias por mês completo.";
+  } else if (marcos?.saiuAoCompletarUmAno) {
+    info = "Você sai ao completar 1 ano: as primeiras férias (30 dias) são pagas em dinheiro.";
+  } else if (marcos?.completouDoisAnos) {
+    const ultimas = ctx?.periodosFerias.find((p) => p.descricao === "últimas férias");
+    info = ultimas
+      ? `Suas últimas férias são de ${formatarData(ultimas.inicio)} a ${formatarData(ultimas.fim)}, nos 30 dias finais do contrato: a bolsa é paga normalmente e não há auxílio-transporte nesses dias.`
+      : "";
+  } else if (marcos) {
+    info = "Na saída você recebe em dinheiro as férias que não usufruiu e as segundas férias proporcionais (2,5 dias por mês completo desde que completou 1 ano).";
+  }
+  $("ferias-info").textContent = info;
+  $("ferias-info").hidden = info === "";
 }
 
 function linhaTotal(rotulo: string, centavos: number, classe: string) {
@@ -300,7 +363,7 @@ function linhaTotal(rotulo: string, centavos: number, classe: string) {
 
 function renderizarExtrato(r: Extract<ResultadoSimulacao, { ok: true }>, folha: AnoMes) {
   const tabela = el("table", { class: "extrato" }, el("caption", {}, `Extrato estimado da folha de ${formatarAnoMes(folha)}`));
-  const ordem: GrupoExtrato[] = ["mes-da-folha", "mes-anterior", "mes-atual", "recesso"];
+  const ordem: GrupoExtrato[] = ["mes-da-folha", "mes-anterior", "mes-atual", "ferias"];
   for (const grupo of ordem) {
     const linhas = r.linhas.filter((l) => l.grupo === grupo);
     const mostrarVazio = (grupo === "mes-anterior" && !r.contexto.ehMesDeEntrada) || (grupo === "mes-atual" && modo() === "desligamento");
@@ -402,12 +465,15 @@ function atualizar() {
   const extrato = $("extrato");
   limparErros();
 
-  const saidaIncompleta = modo() === "desligamento" && campos.dataSaida.value !== "" && !dataCompleta(campos.dataSaida.value);
+  const saidaIncompleta =
+    modo() === "desligamento" &&
+    ((campos.dataSaida.value !== "" && !dataCompleta(campos.dataSaida.value)) ||
+      (situacaoFeriasMarcada() === "em-andamento" && campos.inicioFerias.value !== "" && !dataCompleta(campos.inicioFerias.value)));
   if (!dataCompleta(campos.dataEntrada.value) || saidaIncompleta) {
     atualizarRotulos(folha, null);
     extrato.replaceChildren();
     definirResumo(
-      `<p class="destaque__vazio">${saidaIncompleta ? "Termine de informar a data do desligamento." : "Informe sua data de entrada para ver a estimativa."}</p>`,
+      `<p class="destaque__vazio">${saidaIncompleta ? "Termine de informar as datas do desligamento e das férias." : "Informe sua data de entrada para ver a estimativa."}</p>`,
     );
     return;
   }
