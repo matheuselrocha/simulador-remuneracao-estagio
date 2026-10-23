@@ -116,10 +116,7 @@
               <div class="campo" data-campo="mesAnterior.faltasInjustificadas">
                 <label for="ant-faltas" id="ant-faltas-rotulo">Desses dias, quantos foram faltas injustificadas?</label>
                 <input type="number" id="ant-faltas" inputmode="numeric" min="0" step="1" placeholder="0" aria-describedby="ant-faltas-ajuda ant-faltas-erro" />
-                <p class="campo__ajuda" id="ant-faltas-ajuda">
-                  Faltas sem justificativa, irregularidades de ponto não corrigidas e atestado sem abono descontam também a bolsa.
-                  <span class="etiqueta-regra">Regra a confirmar com o SGEST</span>
-                </p>
+                <p class="campo__ajuda" id="ant-faltas-ajuda">Faltas injustificadas descontam também a bolsa.</p>
                 <p class="campo__erro" id="ant-faltas-erro" hidden></p>
               </div>
             </div>
@@ -172,7 +169,7 @@
           <p>A folha de um mês paga o valor cheio e desconta as ausências do mês anterior, para dar tempo de processar e corrigir a frequência.</p>
           <ul>
             <li><strong>Dia sem presença física</strong> (falta, atestado, recesso ou trabalho remoto autorizado): desconta o AT daquele dia.</li>
-            <li><strong>Falta injustificada</strong>, irregularidade na marcação de ponto ou atestado sem abono: desconta também a bolsa daquele dia (bolsa mensal ÷ número de dias do mês da falta).</li>
+            <li><strong>Falta injustificada</strong>: desconta também a bolsa daquele dia (bolsa mensal ÷ número de dias do mês da falta).</li>
             <li>No <strong>recesso</strong>, a bolsa é mantida integralmente; o AT é descontado no mês seguinte, porque recesso não é trabalho presencial.</li>
           </ul>
 
@@ -198,7 +195,6 @@
             <li data-recurso="desligamento" hidden>Fração de mês no recesso proporcional (hoje: conta só meses completos).</li>
             <li data-recurso="desligamento" hidden>Desligamento no meio do mês (hoje: bolsa pelos dias corridos até a saída, cada dia = bolsa ÷ dias do mês, e AT por dias úteis até a saída).</li>
             <li>Desconto do mês anterior após reajuste (hoje: usa o valor vigente no mês anterior).</li>
-            <li>Se irregularidade de ponto e atestado sem abono descontam a bolsa (hoje: sim, como falta injustificada).</li>
           </ul>
 
           <p class="dica"><strong>Dica SGEST:</strong> acompanhe seus lançamentos e confira sua frequência regularmente.</p>

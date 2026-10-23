@@ -227,7 +227,7 @@ O motor implementa uma regra provisória para cada ponto abaixo, parametrizada e
 | 2 | ~~Recesso do 1º ano não gozado~~ | **resolvido**: ver "Desligamento e férias" | — |
 | 3 | Desligamento no meio do mês | bolsa por dias corridos até a saída (÷ dias do mês); AT por dias úteis até a saída | mês integral |
 | 4 | Desconto do mês anterior após reajuste | usa o valor vigente em M−1 (mês em que foi pago); aplicado a AT **e bolsa** | valor vigente em M |
-| 5 | Irregularidade de ponto e atestado sem abono descontam a bolsa? | sim, contam como falta injustificada (o slide do SGEST só cita o AT) | — (texto de ajuda) |
+| 5 | ~~Irregularidade de ponto e atestado sem abono descontam a bolsa?~~ | **resolvido (23/10/2026)**: o simulador fala só em faltas injustificadas | — |
 
 Outras decisões que vale confirmar:
 - **Feriados de 2026**: a planilha só tinha as datas; descrições e tipos do seed foram inferidos e marcados "a conferir". **29/06/2026** não tem descrição conhecida.
