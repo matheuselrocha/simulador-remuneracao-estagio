@@ -74,6 +74,27 @@
               <p class="campo__ajuda" id="data-saida-ajuda"></p>
               <p class="campo__erro" id="data-saida-erro" hidden></p>
             </div>
+
+            <div id="bloco-ferias" hidden>
+              <fieldset class="campo" id="situacao-ferias" aria-describedby="situacao-ferias-ajuda situacao-ferias-erro">
+                <legend>Suas primeiras férias</legend>
+                <p class="campo__ajuda" id="situacao-ferias-ajuda">As férias são sempre de 30 dias e só podem ser tiradas depois de completar 1 ano de contrato.</p>
+                <div class="opcoes-radio">
+                  <label data-opcao="tirou"><input type="radio" name="situacao-ferias" value="tirou" /> Já tirei os 30 dias</label>
+                  <label data-opcao="nao-tirou"><input type="radio" name="situacao-ferias" value="nao-tirou" /> <span id="rotulo-nao-tirou">Ainda não tirei (recebo em dinheiro)</span></label>
+                  <label data-opcao="em-andamento"><input type="radio" name="situacao-ferias" value="em-andamento" /> Estou de férias (saí durante as férias)</label>
+                  <label data-opcao="junto-com-ultimas"><input type="radio" name="situacao-ferias" value="junto-com-ultimas" /> Vou tirar junto com as últimas férias</label>
+                </div>
+                <p class="campo__erro" id="situacao-ferias-erro" hidden></p>
+              </fieldset>
+              <div class="campo" id="bloco-inicio-ferias" hidden>
+                <label for="inicio-ferias">Data em que suas férias começaram</label>
+                <input type="date" id="inicio-ferias" aria-describedby="inicio-ferias-ajuda inicio-ferias-erro" />
+                <p class="campo__ajuda" id="inicio-ferias-ajuda">Os dias de férias que faltavam são pagos em dinheiro.</p>
+                <p class="campo__erro" id="inicio-ferias-erro" hidden></p>
+              </div>
+              <p class="nota" id="ferias-info"></p>
+            </div>
           </div>
         </section>
 
@@ -117,16 +138,6 @@
                 <p class="campo__erro" id="atual-faltas-erro" hidden></p>
               </div>
 
-              <h3 class="subtitulo">Recesso indenizado</h3>
-              <p class="nota" id="recesso-info"></p>
-              <div class="campo campo--checkbox" id="bloco-recesso-1o-ano" hidden>
-                <input type="checkbox" id="recesso-1o-ano" aria-describedby="recesso-1o-ano-ajuda" />
-                <label for="recesso-1o-ano">Não tirei o recesso do 1º ano</label>
-                <p class="campo__ajuda" id="recesso-1o-ano-ajuda">
-                  Marque se você não usou os 30 dias de recesso a que teve direito ao completar 1 ano de estágio.
-                  <span class="etiqueta-regra">Regra a confirmar com o SGEST</span>
-                </p>
-              </div>
             </div>
           </div>
         </section>
@@ -175,7 +186,8 @@
           <h3>Último mês (desligamento)</h3>
           <ul>
             <li>São descontadas as ausências do mês anterior e também as do próprio mês do desligamento.</li>
-            <li><strong>Recesso indenizado</strong> (só bolsa, sem AT): 30 dias para quem completou 2 anos; para quem sai antes, 2,5 dias por mês completo no período em aberto. Cada dia de recesso vale a bolsa ÷ 30, ou seja, 30 dias equivalem a uma bolsa cheia.</li>
+            <li><strong>Férias</strong> são sempre de 30 dias e só depois de completar 1 ano. As que não foram usufruídas são pagas em dinheiro na saída (só bolsa, sem AT; cada dia vale a bolsa ÷ 30): as primeiras férias inteiras (ou os dias que faltavam, se você saiu durante elas) e as segundas proporcionais, 2,5 dias por mês completo depois do 1º ano. Com menos de 1 ano, 2,5 dias por mês completo.</li>
+            <li>Quem completa 2 anos <strong>usufrui as últimas férias nos 30 dias finais</strong> do contrato (obrigatório): a bolsa é paga normalmente e não há AT nesses dias.</li>
             <li>O contrato termina, no máximo, na véspera do dia em que você completa 2 anos de estágio.</li>
           </ul>
           </div>
@@ -184,7 +196,6 @@
           <p>Nestes pontos o simulador usa uma regra provisória e avisa quando ela afeta o resultado:</p>
           <ul>
             <li data-recurso="desligamento" hidden>Fração de mês no recesso proporcional (hoje: conta só meses completos).</li>
-            <li data-recurso="desligamento" hidden>Recesso do 1º ano não gozado por quem sai entre 12 e 24 meses (hoje: soma 30 dias se marcado).</li>
             <li data-recurso="desligamento" hidden>Desligamento no meio do mês (hoje: bolsa pelos dias corridos até a saída, cada dia = bolsa ÷ dias do mês, e AT por dias úteis até a saída).</li>
             <li>Desconto do mês anterior após reajuste (hoje: usa o valor vigente no mês anterior).</li>
             <li>Se irregularidade de ponto e atestado sem abono descontam a bolsa (hoje: sim, como falta injustificada).</li>

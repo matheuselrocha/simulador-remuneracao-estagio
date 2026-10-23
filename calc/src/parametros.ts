@@ -32,8 +32,6 @@ export interface Parametros {
 export interface RegrasProvisorias {
   /** 4.6.1 — fração de mês no recesso proporcional. */
   fracaoMesRecesso: "so-meses-completos" | "fracao-15-dias-conta-mes";
-  /** 4.6.2 — recesso do 1º ano não gozado por quem sai entre 12 e 24 meses. */
-  recessoPrimeiroAnoNaoGozado: "soma-30-dias-se-marcado" | "ignorar";
   /** 4.6.3 — desligamento no meio do mês. */
   desligamentoMeioDoMes: "proporcional" | "integral";
   /** 4.6.4 — valor usado no desconto do mês anterior quando houve reajuste entre M−1 e M. */
@@ -42,7 +40,6 @@ export interface RegrasProvisorias {
 
 export const REGRAS_PADRAO: RegrasProvisorias = {
   fracaoMesRecesso: "so-meses-completos",
-  recessoPrimeiroAnoNaoGozado: "soma-30-dias-se-marcado",
   desligamentoMeioDoMes: "proporcional",
   valorDescontoMesAnterior: "vigente-em-M-1",
 };

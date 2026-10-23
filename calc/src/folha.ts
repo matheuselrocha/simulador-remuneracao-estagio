@@ -10,6 +10,7 @@ import {
   compararMeses,
   contidaNoMes,
   dataFinalContrato,
+  diferencaDias,
   diasNoMes,
   ehDataISO,
   mesAnterior as mesAnteriorDe,
@@ -43,13 +44,30 @@ export interface AusenciasMes {
   faltasInjustificadas: number;
 }
 
+/**
+ * Situação das primeiras férias (recesso do 1º ano) na data da saída.
+ * Férias são sempre de 30 dias, sem parcelamento, e só depois de completar 1 ano.
+ * - "tirou": usufruiu os 30 dias;
+ * - "nao-tirou": não usufruiu → 30 dias em pecúnia (quem completa 2 anos: usufruiu só as últimas);
+ * - "em-andamento": saiu durante as primeiras férias → dias restantes em pecúnia;
+ * - "junto-com-ultimas": só para quem completa 2 anos: usufrui as primeiras seguidas das últimas.
+ */
+export type SituacaoPrimeirasFerias = "tirou" | "nao-tirou" | "em-andamento" | "junto-com-ultimas";
+
 export interface DadosDesligamento {
   /** Último dia do estágio (inclusive). Deve cair no mês da folha. */
   dataSaida: DataISO;
-  /** Ausências do próprio mês do desligamento. */
+  /** Outras ausências do mês do desligamento — os dias de férias o simulador calcula sozinho. */
   mesAtual: AusenciasMes;
-  /** Checkbox "não tirei o recesso do 1º ano" (regra provisória 4.6.2). */
-  naoGozouRecessoPrimeiroAno: boolean;
+  /** Obrigatória quando a saída é depois de completar 1 ano (ver ContextoFolha.opcoesPrimeirasFerias). */
+  primeirasFerias?: { situacao: SituacaoPrimeirasFerias; /** Só em "em-andamento". */ inicio?: DataISO };
+}
+
+/** Período de férias considerado no desligamento (sem AT; bolsa normal). */
+export interface PeriodoFerias {
+  inicio: DataISO;
+  fim: DataISO;
+  descricao: string;
 }
 
 export interface EntradaSimulacao {
@@ -62,7 +80,7 @@ export interface EntradaSimulacao {
   desligamento?: DadosDesligamento;
 }
 
-export type GrupoExtrato = "mes-da-folha" | "mes-anterior" | "mes-atual" | "recesso";
+export type GrupoExtrato = "mes-da-folha" | "mes-anterior" | "mes-atual" | "ferias";
 
 export interface LinhaExtrato {
   grupo: GrupoExtrato;
@@ -81,7 +99,9 @@ export type CampoEntrada =
   | "mesAnterior.faltasInjustificadas"
   | "desligamento.dataSaida"
   | "desligamento.mesAtual.diasNaoPresenciais"
-  | "desligamento.mesAtual.faltasInjustificadas";
+  | "desligamento.mesAtual.faltasInjustificadas"
+  | "desligamento.primeirasFerias.situacao"
+  | "desligamento.primeirasFerias.inicio";
 
 export interface ErroValidacao {
   campo: CampoEntrada;
@@ -95,7 +115,9 @@ export interface ErroValidacao {
     | "acima-do-maximo"
     | "saida-fora-do-mes"
     | "saida-antes-da-entrada"
-    | "saida-apos-fim-do-contrato";
+    | "saida-apos-fim-do-contrato"
+    | "situacao-ferias-obrigatoria"
+    | "ferias-invalidas";
   mensagem: string;
 }
 
@@ -104,7 +126,7 @@ export interface Aviso {
     | "calendario-mes-anterior-indisponivel"
     | "calendario-deposito-indisponivel"
     | "regra-fracao-mes-recesso"
-    | "regra-recesso-primeiro-ano"
+    | "info-ultimas-ferias"
     | "regra-desligamento-meio-do-mes"
     | "regra-valor-desconto-mes-anterior";
   /** true para os pontos em aberto da seção 4.6 ("regra a confirmar com o SGEST"). */
@@ -126,8 +148,13 @@ export interface ContextoFolha {
   maxNaoPresenciaisMesAtual: number | null;
   dataFinalContrato: DataISO | null;
   dataDeposito: DataISO | null;
-  /** Mostra o checkbox "não tirei o recesso do 1º ano". */
-  podeInformarRecessoPrimeiroAno: boolean;
+  /** Opções da pergunta "Suas primeiras férias" para esta saída; vazio = a pergunta não se aplica. */
+  opcoesPrimeirasFerias: SituacaoPrimeirasFerias[];
+  /** Períodos de férias considerados no desligamento (calculados pelo simulador). */
+  periodosFerias: PeriodoFerias[];
+  /** Dias úteis de férias (sem AT) no mês anterior e no mês da folha. */
+  diasUteisFeriasMesAnterior: number;
+  diasUteisFeriasMesAtual: number;
   bolsaCentavos: Centavos | null;
   atCentavos: Centavos | null;
 }
@@ -148,7 +175,7 @@ export const TITULOS_GRUPOS: Record<GrupoExtrato, string> = {
   "mes-da-folha": "Valores do mês",
   "mes-anterior": "Descontos do mês anterior",
   "mes-atual": "Descontos do mês do desligamento",
-  recesso: "Recesso indenizado",
+  ferias: "Férias em pecúnia",
 };
 
 // ───────────────────────────── Implementação ─────────────────────────────
@@ -287,7 +314,10 @@ export function simularFolha(
     maxNaoPresenciaisMesAtual: null,
     dataFinalContrato: dataFinalContrato(dataEntrada),
     dataDeposito: null,
-    podeInformarRecessoPrimeiroAno: false,
+    opcoesPrimeirasFerias: [],
+    periodosFerias: [],
+    diasUteisFeriasMesAnterior: 0,
+    diasUteisFeriasMesAtual: 0,
     bolsaCentavos: bolsaM?.centavos ?? null,
     atCentavos: atM?.centavos ?? null,
   };
@@ -340,17 +370,6 @@ export function simularFolha(
     });
   }
 
-  // ── Validação do mês anterior ──
-  if (!ehMesDeEntrada) {
-    validarAusencias(
-      entrada.mesAnterior,
-      contexto.maxNaoPresenciaisMesAnterior,
-      nomeMes(mesAnt.mes),
-      { naoPresenciais: "mesAnterior.diasNaoPresenciais", faltas: "mesAnterior.faltasInjustificadas" },
-      erros,
-    );
-  }
-
   // ── Desligamento: validação de datas e limites ──
   const deslig = entrada.modo === "desligamento" ? entrada.desligamento : undefined;
   let fimCredito = ultimoDia(folha); // último dia que gera bolsa/AT no mês
@@ -375,9 +394,15 @@ export function simularFolha(
       const saida = deslig.dataSaida;
       if (regras.desligamentoMeioDoMes === "proporcional" && saida < ultimoDia(folha)) fimCredito = saida;
       const inicioMes = ehMesDeEntrada ? dataEntrada : primeiroDia(folha);
-      contexto.maxNaoPresenciaisMesAtual = cal.diasUteisEntre(inicioMes, fimCredito);
-      const meses = mesesCompletos(dataEntrada, saida).meses;
-      contexto.podeInformarRecessoPrimeiroAno = meses >= 12 && saida < contexto.dataFinalContrato!;
+      resolverFeriasDoDesligamento(dataEntrada, deslig, contexto, erros);
+      // Dias úteis de férias: sem AT. No mês da saída simplesmente não geram AT;
+      // no mês anterior o AT foi pago adiantado e é descontado na última folha.
+      contexto.diasUteisFeriasMesAtual = diasUteisDeFerias(cal, contexto.periodosFerias, inicioMes, fimCredito);
+      if (!ehMesDeEntrada && cal.temMes(mesAnt)) {
+        contexto.diasUteisFeriasMesAnterior = diasUteisDeFerias(cal, contexto.periodosFerias, primeiroDia(mesAnt), ultimoDia(mesAnt));
+        if (contexto.maxNaoPresenciaisMesAnterior !== null) contexto.maxNaoPresenciaisMesAnterior -= contexto.diasUteisFeriasMesAnterior;
+      }
+      contexto.maxNaoPresenciaisMesAtual = cal.diasUteisEntre(inicioMes, fimCredito) - contexto.diasUteisFeriasMesAtual;
       validarAusencias(
         deslig.mesAtual,
         contexto.maxNaoPresenciaisMesAtual,
@@ -389,6 +414,17 @@ export function simularFolha(
         erros,
       );
     }
+  }
+
+  // ── Validação do mês anterior (limite já sem os dias de férias, no desligamento) ──
+  if (!ehMesDeEntrada) {
+    validarAusencias(
+      entrada.mesAnterior,
+      contexto.maxNaoPresenciaisMesAnterior,
+      nomeMes(mesAnt.mes),
+      { naoPresenciais: "mesAnterior.diasNaoPresenciais", faltas: "mesAnterior.faltasInjustificadas" },
+      erros,
+    );
   }
 
   if (erros.length > 0) return { ok: false, contexto, erros, avisos };
@@ -409,13 +445,7 @@ export function simularFolha(
       conta: "valor mensal",
       centavos: bolsaM.centavos,
     });
-    linhas.push({
-      grupo: "mes-da-folha",
-      natureza: "credito",
-      descricao: `Auxílio-transporte de ${nomeMes(folha.mes)}`,
-      conta: `${diasUteis(contexto.diasUteisFolha)} × ${formatarMoeda(atM.centavos)}`,
-      centavos: multiplicarArredondado(contexto.diasUteisFolha, atM.centavos),
-    });
+    linhas.push(linhaAT(`Auxílio-transporte de ${nomeMes(folha.mes)}`, contexto.diasUteisFolha, contexto.diasUteisFeriasMesAtual, atM));
   } else {
     const diaInicio = partes(inicioCredito).dia;
     const diaFim = partes(fimCredito).dia;
@@ -429,13 +459,7 @@ export function simularFolha(
       centavos: valorDiasDeBolsa(diasBolsa, bolsaM, folha),
     });
     const du = cal.diasUteisEntre(inicioCredito, fimCredito);
-    linhas.push({
-      grupo: "mes-da-folha",
-      natureza: "credito",
-      descricao: `Auxílio-transporte proporcional (${periodo})`,
-      conta: `${diasUteis(du)} × ${formatarMoeda(atM.centavos)}`,
-      centavos: multiplicarArredondado(du, atM.centavos),
-    });
+    linhas.push(linhaAT(`Auxílio-transporte proporcional (${periodo})`, du, contexto.diasUteisFeriasMesAtual, atM));
     if (fimCredito < ultimoDia(folha)) {
       avisos.push({
         codigo: "regra-desligamento-meio-do-mes",
@@ -471,13 +495,22 @@ export function simularFolha(
             : `Houve reajuste entre ${formatarAnoMes(mesAnt)} e ${formatarAnoMes(folha)}. Os descontos de ${nomeMes(mesAnt.mes)} usam o valor vigente em ${nomeMes(folha.mes)}.`,
       });
     }
+    if (contexto.diasUteisFeriasMesAnterior > 0) {
+      linhas.push({
+        grupo: "mes-anterior",
+        natureza: "desconto",
+        descricao: `Dias de férias em ${nomeMes(mesAnt.mes)} (auxílio-transporte pago adiantado)`,
+        conta: `${diasUteis(contexto.diasUteisFeriasMesAnterior)} × ${formatarMoeda(atAnt.centavos)}`,
+        centavos: multiplicarArredondado(contexto.diasUteisFeriasMesAnterior, atAnt.centavos),
+      });
+    }
     linhas.push(...linhasAusencias("mes-anterior", mesAnt, a, bolsaAnt, atAnt));
   }
 
   // Desligamento (regra 4.5)
   if (deslig) {
     linhas.push(...linhasAusencias("mes-atual", folha, deslig.mesAtual, bolsaM, atM));
-    linhas.push(...linhasRecesso(dataEntrada, deslig, contexto, bolsaM, regras, avisos));
+    linhas.push(...linhasFeriasEmPecunia(dataEntrada, deslig, contexto, bolsaM, regras, avisos));
   }
 
   const creditos = soma(linhas, "credito");
@@ -497,33 +530,133 @@ function soma(linhas: LinhaExtrato[], natureza: LinhaExtrato["natureza"]): Centa
   return linhas.filter((l) => l.natureza === natureza).reduce((t, l) => t + l.centavos, 0);
 }
 
-/** Dias de recesso indenizado (regra 4.5 + provisórias 4.6.1 e 4.6.2). */
-export function calcularDiasRecesso(
-  dataEntrada: DataISO,
-  dataSaida: DataISO,
-  naoGozouRecessoPrimeiroAno: boolean,
-  regras: RegrasProvisorias = REGRAS_PADRAO,
-): { dias: number; mesesNoPeriodo: number; completouDoisAnos: boolean; fracaoIgnorada: boolean; somouPrimeiroAno: boolean } {
-  const completouDoisAnos = dataSaida >= dataFinalContrato(dataEntrada);
-  if (completouDoisAnos) {
-    return { dias: 30, mesesNoPeriodo: 12, completouDoisAnos, fracaoIgnorada: false, somouPrimeiroAno: false };
-  }
-  const mesesContrato = mesesCompletos(dataEntrada, dataSaida).meses;
-  const inicioPeriodo = mesesContrato >= 12 ? somarAnos(dataEntrada, 1) : dataEntrada;
-  let { meses, diasRestantes } = mesesCompletos(inicioPeriodo, dataSaida);
-  let fracaoIgnorada = false;
-  if (diasRestantes > 0) {
-    if (regras.fracaoMesRecesso === "fracao-15-dias-conta-mes" && diasRestantes >= 15) meses++;
-    else fracaoIgnorada = true;
-  }
-  let dias = meses * 2.5;
-  const somouPrimeiroAno =
-    naoGozouRecessoPrimeiroAno && mesesContrato >= 12 && regras.recessoPrimeiroAnoNaoGozado === "soma-30-dias-se-marcado";
-  if (somouPrimeiroAno) dias += 30;
-  return { dias, mesesNoPeriodo: meses, completouDoisAnos, fracaoIgnorada, somouPrimeiroAno };
+/** AT do mês sem os dias úteis de férias (forma B: os dias de férias simplesmente não geram AT). */
+function linhaAT(descricao: string, diasUteisPeriodo: number, diasUteisFerias: number, at: ValorVigente): LinhaExtrato {
+  const presenciais = Math.max(0, diasUteisPeriodo - diasUteisFerias);
+  const conta =
+    diasUteisFerias === 0
+      ? `${diasUteis(presenciais)} × ${formatarMoeda(at.centavos)}`
+      : presenciais === 0
+        ? `não devido: ${diasUteis(diasUteisFerias)} de férias`
+        : `${diasUteis(presenciais)} × ${formatarMoeda(at.centavos)} (sem os ${diasUteis(diasUteisFerias)} de férias)`;
+  return { grupo: "mes-da-folha", natureza: "credito", descricao, conta, centavos: multiplicarArredondado(presenciais, at.centavos) };
 }
 
-function linhasRecesso(
+function diasUteisDeFerias(cal: Calendario, periodos: PeriodoFerias[], inicio: DataISO, fim: DataISO): number {
+  let n = 0;
+  for (const p of periodos) {
+    const a = p.inicio > inicio ? p.inicio : inicio;
+    const b = p.fim < fim ? p.fim : fim;
+    if (a <= b) n += cal.diasUteisEntre(a, b);
+  }
+  return n;
+}
+
+/** Marcos do contrato para as regras de férias. */
+export function marcosDoContrato(dataEntrada: DataISO, dataSaida: DataISO) {
+  const podeTirarFeriasDesde = somarAnos(dataEntrada, 1); // dia seguinte ao 1º ano completo
+  return {
+    podeTirarFeriasDesde,
+    completouUmAno: dataSaida >= somarDias(podeTirarFeriasDesde, -1),
+    /** Saída no último dia do 1º ano: não houve como usufruir as primeiras férias. */
+    saiuAoCompletarUmAno: dataSaida === somarDias(podeTirarFeriasDesde, -1),
+    completouDoisAnos: dataSaida >= dataFinalContrato(dataEntrada),
+  };
+}
+
+/** Define as opções de "Suas primeiras férias", valida a resposta e monta os períodos de férias. */
+function resolverFeriasDoDesligamento(dataEntrada: DataISO, deslig: DadosDesligamento, contexto: ContextoFolha, erros: ErroValidacao[]) {
+  const saida = deslig.dataSaida;
+  const final = contexto.dataFinalContrato!;
+  const m = marcosDoContrato(dataEntrada, saida);
+  contexto.opcoesPrimeirasFerias =
+    !m.completouUmAno || m.saiuAoCompletarUmAno
+      ? []
+      : m.completouDoisAnos
+        ? ["tirou", "nao-tirou", "junto-com-ultimas"]
+        : ["tirou", "nao-tirou", "em-andamento"];
+
+  const periodos: PeriodoFerias[] = [];
+  // Últimas férias: obrigatoriamente usufruídas nos 30 dias anteriores ao fim do contrato.
+  if (m.completouDoisAnos) {
+    periodos.push({ inicio: somarDias(final, -29), fim: final, descricao: "últimas férias" });
+  }
+  const situacao = deslig.primeirasFerias?.situacao;
+  if (contexto.opcoesPrimeirasFerias.length > 0) {
+    if (!situacao || !contexto.opcoesPrimeirasFerias.includes(situacao)) {
+      erros.push({
+        campo: "desligamento.primeirasFerias.situacao",
+        codigo: "situacao-ferias-obrigatoria",
+        mensagem: "Informe a situação das suas primeiras férias.",
+      });
+    } else if (situacao === "junto-com-ultimas") {
+      periodos.unshift({ inicio: somarDias(final, -59), fim: somarDias(final, -30), descricao: "primeiras férias" });
+    } else if (situacao === "em-andamento") {
+      const inicio = deslig.primeirasFerias?.inicio ?? "";
+      if (!ehDataISO(inicio)) {
+        erros.push({ campo: "desligamento.primeirasFerias.inicio", codigo: "data-invalida", mensagem: "Informe a data em que suas férias começaram." });
+      } else if (inicio < m.podeTirarFeriasDesde) {
+        erros.push({
+          campo: "desligamento.primeirasFerias.inicio",
+          codigo: "ferias-invalidas",
+          mensagem: `As primeiras férias só podem começar depois de completar 1 ano, a partir de ${formatarData(m.podeTirarFeriasDesde)}.`,
+        });
+      } else if (inicio > saida) {
+        erros.push({ campo: "desligamento.primeirasFerias.inicio", codigo: "ferias-invalidas", mensagem: "O início das férias não pode ser depois da data do desligamento." });
+      } else if (diferencaDias(inicio, saida) + 1 > 30) {
+        erros.push({
+          campo: "desligamento.primeirasFerias.inicio",
+          codigo: "ferias-invalidas",
+          mensagem: `Férias iniciadas em ${formatarData(inicio)} terminaram em ${formatarData(somarDias(inicio, 29))}, antes do desligamento. Escolha "Já tirei".`,
+        });
+      } else {
+        periodos.unshift({ inicio, fim: saida, descricao: "primeiras férias" });
+      }
+    }
+  }
+  contexto.periodosFerias = periodos;
+}
+
+/** Dias de férias pagos em pecúnia na saída (regras confirmadas pelo SGEST em 23/10/2026). */
+export function calcularFeriasEmPecunia(
+  dataEntrada: DataISO,
+  dataSaida: DataISO,
+  primeiras: DadosDesligamento["primeirasFerias"],
+  regras: RegrasProvisorias = REGRAS_PADRAO,
+): {
+  primeiras: { dias: number; usufruidos: number } | null;
+  proporcional: { dias: number; meses: number; periodo: "primeiro" | "segundo"; fracaoIgnorada: boolean } | null;
+  completouDoisAnos: boolean;
+} {
+  const m = marcosDoContrato(dataEntrada, dataSaida);
+  // Primeiras férias: direito integral a partir do 1º ano completo.
+  let primeirasPecunia: { dias: number; usufruidos: number } | null = null;
+  if (m.completouUmAno) {
+    const situacao = m.saiuAoCompletarUmAno ? "nao-tirou" : primeiras?.situacao;
+    if (situacao === "nao-tirou") primeirasPecunia = { dias: 30, usufruidos: 0 };
+    else if (situacao === "em-andamento" && primeiras?.inicio) {
+      const usufruidos = Math.min(30, diferencaDias(primeiras.inicio, dataSaida) + 1);
+      primeirasPecunia = { dias: 30 - usufruidos, usufruidos };
+    }
+  }
+  // Proporcional: 2,5 dias por mês completo do período em aberto. Quem completa 2 anos
+  // usufrui as últimas férias no fim do contrato (obrigatório): nada em pecúnia.
+  let proporcional: { dias: number; meses: number; periodo: "primeiro" | "segundo"; fracaoIgnorada: boolean } | null = null;
+  if (!m.completouDoisAnos) {
+    const periodo = m.completouUmAno ? "segundo" : "primeiro";
+    const inicioPeriodo = m.completouUmAno ? m.podeTirarFeriasDesde : dataEntrada;
+    let { meses, diasRestantes } = mesesCompletos(inicioPeriodo, dataSaida);
+    let fracaoIgnorada = false;
+    if (diasRestantes > 0) {
+      if (regras.fracaoMesRecesso === "fracao-15-dias-conta-mes" && diasRestantes >= 15) meses++;
+      else fracaoIgnorada = true;
+    }
+    proporcional = { dias: meses * 2.5, meses, periodo, fracaoIgnorada };
+  }
+  return { primeiras: primeirasPecunia, proporcional, completouDoisAnos: m.completouDoisAnos };
+}
+
+function linhasFeriasEmPecunia(
   dataEntrada: DataISO,
   deslig: DadosDesligamento,
   contexto: ContextoFolha,
@@ -531,46 +664,47 @@ function linhasRecesso(
   regras: RegrasProvisorias,
   avisos: Aviso[],
 ): LinhaExtrato[] {
-  const r = calcularDiasRecesso(
-    dataEntrada,
-    deslig.dataSaida,
-    deslig.naoGozouRecessoPrimeiroAno && contexto.podeInformarRecessoPrimeiroAno,
-    regras,
-  );
-  if (r.fracaoIgnorada) {
-    avisos.push({
-      codigo: "regra-fracao-mes-recesso",
-      regraAConfirmar: true,
-      mensagem: "O recesso proporcional considerou só os meses completos do período aquisitivo; a fração de mês ficou de fora.",
-    });
-  }
-  if (r.somouPrimeiroAno) {
-    avisos.push({
-      codigo: "regra-recesso-primeiro-ano",
-      regraAConfirmar: true,
-      mensagem: "Foram somados 30 dias pelo recesso do 1º ano não gozado.",
-    });
-  }
-  if (r.dias === 0) return [];
-  const proporcional = r.completouDoisAnos ? "2 anos completos" : `${r.mesesNoPeriodo} ${r.mesesNoPeriodo === 1 ? "mês completo" : "meses completos"} × 2,5 dias`;
+  const r = calcularFeriasEmPecunia(dataEntrada, deslig.dataSaida, deslig.primeirasFerias, regras);
   const linhas: LinhaExtrato[] = [];
-  const diasPeriodo = r.dias - (r.somouPrimeiroAno ? 30 : 0);
-  if (diasPeriodo > 0) {
+  if (r.primeiras && r.primeiras.dias > 0) {
     linhas.push({
-      grupo: "recesso",
+      grupo: "ferias",
       natureza: "credito",
-      descricao: `Recesso indenizado (${proporcional})`,
-      conta: `${formatarDias(diasPeriodo)} × ${contaDiaRecesso(bolsa)}`,
-      centavos: valorDiasDeRecesso(diasPeriodo, bolsa),
+      descricao:
+        r.primeiras.usufruidos > 0
+          ? `Primeiras férias: dias não usufruídos (usufruiu ${r.primeiras.usufruidos} de 30)`
+          : r.completouDoisAnos
+            ? "Primeiras férias não usufruídas (usufruiu só as últimas)"
+            : "Primeiras férias não usufruídas",
+      conta: `${formatarDias(r.primeiras.dias)} × ${contaDiaRecesso(bolsa)}`,
+      centavos: valorDiasDeRecesso(r.primeiras.dias, bolsa),
     });
   }
-  if (r.somouPrimeiroAno) {
-    linhas.push({
-      grupo: "recesso",
-      natureza: "credito",
-      descricao: "Recesso do 1º ano não gozado",
-      conta: `30 dias × ${contaDiaRecesso(bolsa)}`,
-      centavos: valorDiasDeRecesso(30, bolsa),
+  if (r.proporcional) {
+    if (r.proporcional.fracaoIgnorada) {
+      avisos.push({
+        codigo: "regra-fracao-mes-recesso",
+        regraAConfirmar: true,
+        mensagem: "As férias proporcionais consideraram só os meses completos do período aquisitivo; a fração de mês ficou de fora.",
+      });
+    }
+    if (r.proporcional.dias > 0) {
+      const meses = `${r.proporcional.meses} ${r.proporcional.meses === 1 ? "mês completo" : "meses completos"} × 2,5 dias`;
+      linhas.push({
+        grupo: "ferias",
+        natureza: "credito",
+        descricao: `${r.proporcional.periodo === "segundo" ? "Segundas férias proporcionais" : "Férias proporcionais"} (${meses})`,
+        conta: `${formatarDias(r.proporcional.dias)} × ${contaDiaRecesso(bolsa)}`,
+        centavos: valorDiasDeRecesso(r.proporcional.dias, bolsa),
+      });
+    }
+  }
+  const ultimas = contexto.periodosFerias.find((p) => p.descricao === "últimas férias");
+  if (ultimas) {
+    avisos.push({
+      codigo: "info-ultimas-ferias",
+      regraAConfirmar: false,
+      mensagem: `As últimas férias (${formatarData(ultimas.inicio)} a ${formatarData(ultimas.fim)}) são usufruídas no fim do contrato e não são pagas em dinheiro. Nesses dias a bolsa é paga normalmente e não há auxílio-transporte.`,
     });
   }
   return linhas;
