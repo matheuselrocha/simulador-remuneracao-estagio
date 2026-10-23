@@ -250,6 +250,9 @@ Levantamento feito pelo SGEST para reativar o modo "Último mês (desligamento)"
    - usufruir só as segundas e receber as primeiras em pecúnia.
 6. **AT nas últimas férias:** os dias de férias não são presenciais, então o AT deles não é devido. A última folha desconta o AT dos dias de férias do mês anterior **e** do próprio mês. O simulador deve **preencher esses dias automaticamente** a partir da data final do contrato.
 7. Dia de recesso em pecúnia vale **bolsa ÷ 30** (30 dias = uma bolsa cheia), em qualquer mês (20/10/2026).
+8. **Prazo do contrato:** o termo é sempre de **1 ano, prorrogável uma única vez por mais 1 ano**, sem exceções. O contrato termina, portanto, aos 12 meses (sem prorrogação), aos 24 meses ou antes, por desligamento (23/10/2026).
+9. **Saída durante as férias:** os dias de férias que faltavam usufruir são **pagos em pecúnia**. Quem está nas últimas férias já está com o desligamento em andamento no sistema; não é um caso à parte (23/10/2026).
+10. **O motivo do desligamento não muda** o direito às férias em pecúnia (23/10/2026).
 
 ### Mudanças previstas no motor
 
@@ -259,6 +262,8 @@ Levantamento feito pelo SGEST para reativar o modo "Último mês (desligamento)"
 | 2 anos completos, usufruiu as primeiras | +30 dias (1 bolsa) | nada em pecúnia |
 | 2 anos completos, não usufruiu as primeiras | +30 dias | 30 dias (se usufruiu só as segundas) ou nada (se usufruiu as duas) |
 | Últimas férias | estagiário informa os dias não presenciais | dias de férias calculados pela data final do contrato |
+| Data final do contrato | sempre entrada + 2 anos − 1 dia | perguntar se o contrato foi prorrogado: sem prorrogação, entrada + 1 ano − 1 dia (e as primeiras férias vão em pecúnia, regra 3) |
+| Saída durante as primeiras férias | não tratado | dias de férias restantes em pecúnia (bolsa ÷ 30 por dia); AT dos dias de férias descontado |
 
 Nova pergunta ao estagiário, no lugar de "Não tirei o recesso do 1º ano": **"Você tirou as primeiras férias?"** (Sim · Não, vou receber em dinheiro · Vou tirar junto com as últimas — esta só para quem completa 2 anos).
 
@@ -266,11 +271,8 @@ Nova pergunta ao estagiário, no lugar de "Não tirei o recesso do 1º ano": **"
 
 - Faltando 1 dia para os 12 meses: proporcional de 11 meses (27,5 dias)?
 - Fração de mês no proporcional: 7 meses e 20 dias conta 7, 8 ou dias exatos?
-- Contrato que termina antes de 2 anos pelo prazo do próprio termo: últimas férias usufruídas nos 30 dias finais ou em pecúnia?
-- Saída durante as férias: dias restantes em pecúnia ou perdidos? (inclui pedido de desligamento durante as últimas férias)
-- Saída no meio do mês e no dia 1º; fim do contrato em fim de semana/feriado; estágio anterior no Senado; renovações do termo.
+- Saída no meio do mês e no dia 1º; fim do contrato em fim de semana/feriado; estágio anterior no Senado (conta para o limite de 2 anos?).
 - Ocorrências que chegam depois do fechamento da última folha; desconto maior que o valor a receber.
-- Motivo do desligamento muda o direito às férias em pecúnia?
 - Mais de um valor de bolsa (nível, carga horária); reajuste no mês da saída.
 - Em qual folha entra o acerto. Pedir um demonstrativo real de cada caso para virar teste automático.
 
