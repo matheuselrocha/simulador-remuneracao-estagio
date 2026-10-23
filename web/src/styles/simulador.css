@@ -216,3 +216,12 @@
   background: var(--cor-superficie-suave);
   border-radius: 0 var(--raio-pequeno) var(--raio-pequeno) 0;
 }
+
+.destaque__observacao {
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  background: var(--cor-atencao-fundo);
+  border-left: 4px solid var(--cor-atencao-borda);
+  border-radius: 0 var(--raio-pequeno) var(--raio-pequeno) 0;
+}
