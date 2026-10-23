@@ -20,8 +20,9 @@ Substitui a planilha *Calculadora Financeira – Estagiários* (em `referencias/
 7. [Quem guarda a "chave mestra"](#quem-guarda-a-chave-mestra)
 8. [Guia para a equipe do SGEST](#guia-para-a-equipe-do-sgest)
 9. [Pontos em aberto (regras a confirmar)](#pontos-em-aberto-regras-a-confirmar)
-10. [Modelo de dados e privacidade](#modelo-de-dados-e-privacidade)
-11. [Fontes e marca](#fontes-e-marca)
+10. [Desligamento e férias: regras confirmadas e pendências](#desligamento-e-férias-regras-confirmadas-e-pendências)
+11. [Modelo de dados e privacidade](#modelo-de-dados-e-privacidade)
+12. [Fontes e marca](#fontes-e-marca)
 
 ---
 
@@ -216,7 +217,7 @@ A partir de outubro o painel avisa se o ano seguinte não está publicado.
 
 ## Pontos em aberto (regras a confirmar)
 
-> **Modo "Último mês (desligamento)" desativado no site** desde 20/10/2026, até o SGEST validar as regras de desligamento e recesso (pontos 1 a 3 abaixo). O código continua no motor e nos testes. Para reativar, mude `RECURSOS.desligamento` para `true` em `web/src/simulador/main.ts`.
+> **Modo "Último mês (desligamento)" desativado no site** desde 20/10/2026, até o SGEST validar as regras de desligamento e recesso (pontos 1 a 3 abaixo e seção [Desligamento e férias](#desligamento-e-férias-regras-confirmadas-e-pendências)). O código continua no motor e nos testes. Para reativar, mude `RECURSOS.desligamento` para `true` em `web/src/simulador/main.ts`.
 
 O motor implementa uma regra provisória para cada ponto abaixo, parametrizada em `calc/src/parametros.ts` (`RegrasProvisorias`), e o simulador mostra "Regra a confirmar com o SGEST" quando o ponto afeta o resultado.
 
@@ -233,6 +234,45 @@ Outras decisões que vale confirmar:
 - **Data final do contrato** de quem entra em 29/02: entrada + 2 anos − 1 dia = 28/02.
 - Um novo valor não pode ter vigência anterior ao mês atual (não reescreve folhas passadas).
 - **Bolsa diária = bolsa mensal ÷ número de dias do mês** (28 a 31), por decisão do SGEST em 20/10/2026, no lugar do divisor fixo 30 da especificação original. Vale para a 1ª folha proporcional (dias corridos desde a entrada), faltas injustificadas (dias do mês da falta) e desligamento no meio do mês. **Exceção: recesso indenizado usa bolsa ÷ 30** (30 dias de recesso = uma bolsa cheia, também decisão do SGEST). A coluna `valores.divisor` do banco ficou como legado e não é usada.
+
+## Desligamento e férias: regras confirmadas e pendências
+
+Levantamento feito pelo SGEST para reativar o modo "Último mês (desligamento)". **O motor ainda não implementa estas regras**: hoje ele segue as regras provisórias da seção anterior.
+
+### Confirmadas (SGEST, 23/10/2026)
+
+1. As férias (recesso) do estagiário são **sempre de 30 dias**, sem parcelamento, e **só podem ser tiradas depois de completar 1 ano** de contrato.
+2. **Com 1 ano completo**, o direito às primeiras férias é integral. Em qualquer saída a partir daí, se não as tiver usufruído, o estagiário recebe **30 dias em pecúnia**.
+3. **Saída exatamente aos 12 meses:** 30 dias em pecúnia (não houve como usufruir).
+4. **Saída entre 12 e 24 meses:** primeiras férias em pecúnia (se não usufruídas) + **segundas férias proporcionais** em pecúnia.
+5. **As últimas férias são sempre usufruídas nos 30 dias anteriores ao fim do contrato** e isso é **obrigatório**: quem completa 2 anos não recebe as segundas férias em pecúnia. Quem não usufruiu as primeiras pode:
+   - usufruir as primeiras e as segundas seguidas no fim do contrato; ou
+   - usufruir só as segundas e receber as primeiras em pecúnia.
+6. **AT nas últimas férias:** os dias de férias não são presenciais, então o AT deles não é devido. A última folha desconta o AT dos dias de férias do mês anterior **e** do próprio mês. O simulador deve **preencher esses dias automaticamente** a partir da data final do contrato.
+7. Dia de recesso em pecúnia vale **bolsa ÷ 30** (30 dias = uma bolsa cheia), em qualquer mês (20/10/2026).
+
+### Mudanças previstas no motor
+
+| Situação na saída | Hoje (provisório) | Previsto |
+|---|---|---|
+| Exatamente 12 meses | 30 dias só se marcar "não tirei" | 30 dias automaticamente |
+| 2 anos completos, usufruiu as primeiras | +30 dias (1 bolsa) | nada em pecúnia |
+| 2 anos completos, não usufruiu as primeiras | +30 dias | 30 dias (se usufruiu só as segundas) ou nada (se usufruiu as duas) |
+| Últimas férias | estagiário informa os dias não presenciais | dias de férias calculados pela data final do contrato |
+
+Nova pergunta ao estagiário, no lugar de "Não tirei o recesso do 1º ano": **"Você tirou as primeiras férias?"** (Sim · Não, vou receber em dinheiro · Vou tirar junto com as últimas — esta só para quem completa 2 anos).
+
+### Ainda em aberto (levar ao Serviço de Elaboração da Folha)
+
+- Faltando 1 dia para os 12 meses: proporcional de 11 meses (27,5 dias)?
+- Fração de mês no proporcional: 7 meses e 20 dias conta 7, 8 ou dias exatos?
+- Contrato que termina antes de 2 anos pelo prazo do próprio termo: últimas férias usufruídas nos 30 dias finais ou em pecúnia?
+- Saída durante as férias: dias restantes em pecúnia ou perdidos? (inclui pedido de desligamento durante as últimas férias)
+- Saída no meio do mês e no dia 1º; fim do contrato em fim de semana/feriado; estágio anterior no Senado; renovações do termo.
+- Ocorrências que chegam depois do fechamento da última folha; desconto maior que o valor a receber.
+- Motivo do desligamento muda o direito às férias em pecúnia?
+- Mais de um valor de bolsa (nível, carga horária); reajuste no mês da saída.
+- Em qual folha entra o acerto. Pedir um demonstrativo real de cada caso para virar teste automático.
 
 ## Modelo de dados e privacidade
 
